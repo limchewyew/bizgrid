@@ -18,15 +18,40 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: [
+      'Merriweather',
       'Inter',
       '-apple-system',
       'BlinkMacSystemFont',
       '"Segoe UI"',
       'Roboto',
       'system-ui',
-      'sans-serif',
+      'serif',
     ].join(','),
     fontSize: 14,
+    h1: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 700,
+    },
+    h2: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 600,
+    },
+    h3: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 600,
+    },
+    h4: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 600,
+    },
+    h5: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 600,
+    },
+    h6: {
+      fontFamily: 'Merriweather, serif',
+      fontWeight: 600,
+    },
   },
   components: {
     MuiTableCell: {

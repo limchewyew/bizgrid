@@ -23,7 +23,10 @@ const ALLOWED_COLUMNS = [
   'S&P 500?',
   'Certified B-Corp?',
   'FTSE 100?',
-  'Slogan'
+  'AEX?',
+  'Slogan',
+  'Accolades',
+  'Bizgrid Score'
   // Note: Primary Business intentionally removed per latest requirements
 ];
 
@@ -42,7 +45,8 @@ const DISPLAY_COLUMNS = [
   'Sector',     // show sector as its own column
   'Industry',   // industry will keep showing industry/sub-industry combined
   'Slogan',
-  'Accolades'   // keep accolades as the rightmost data column
+  'Accolades',   // keep accolades as the rightmost data column
+  'Bizgrid Score'
 ];
 
 export interface SheetData {
@@ -94,33 +98,8 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
           const state = columnMap['State'] !== undefined ? row[columnMap['State']] || '' : '';
           transformedRow.push({ city, state });
         } else if (displayCol === 'Accolades') {
-          // Build an array of accolade badge image URLs
-          const accolades: string[] = [];
-
-          // S&P 500 badge
-          const sAndPIdx = columnMap['S&P 500?'];
-          const sAndPVal = sAndPIdx !== undefined ? (row[sAndPIdx] || '').toString().trim().toLowerCase() : '';
-          const isSandP = sAndPVal === 'yes' || sAndPVal === 'y';
-          if (isSandP) {
-            accolades.push('https://s3-symbol-logo.tradingview.com/indices/s-and-p-500--600.png');
-          }
-
-          // Certified B-Corp badge
-          const bcorpIdx = columnMap['Certified B-Corp?'];
-          const bcorpVal = bcorpIdx !== undefined ? (row[bcorpIdx] || '').toString().trim().toLowerCase() : '';
-          const isBCorp = bcorpVal === 'yes' || bcorpVal === 'y';
-          if (isBCorp) {
-            accolades.push('https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Certified_B_Corporation_B_Corp_Logo_2022_Black_RGB.svg/250px-Certified_B_Corporation_B_Corp_Logo_2022_Black_RGB.svg.png');
-          }
-
-          // FTSE 100 badge
-          const ftseIdx = columnMap['FTSE 100?'];
-          const ftseVal = ftseIdx !== undefined ? (row[ftseIdx] || '').toString().trim().toLowerCase() : '';
-          const isFTSE = ftseVal === 'yes' || ftseVal === 'y';
-          if (isFTSE) {
-            accolades.push('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR6NhOz9H8PcoXCCgePiey4s3nKv23humfnw&s');
-          }
-
+          // Read directly from the Accolades column
+          const accolades = columnMap['Accolades'] !== undefined ? (row[columnMap['Accolades']] || '').toString() : '';
           transformedRow.push(accolades);
         } else if (displayCol === 'Industry') {
           // Combine Industry and Sub-Industry

@@ -2,18 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TablePagination,
   Paper,
   Typography,
   InputAdornment,
-  IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,15 +17,28 @@ import {
   CircularProgress,
   Alert,
   Button,
-  TableSortLabel,
+  Grid,
+  Card,
+  CardActionArea,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import CampaignIcon from '@mui/icons-material/Campaign';
+import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import LanguageIcon from '@mui/icons-material/Language';
+import SortIcon from '@mui/icons-material/Sort';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import CheckIcon from '@mui/icons-material/Check';
 import { fetchDataFromSheet } from '../../services/googleSheets';
+
+// Feature flags
+const ENABLE_PALETTE = false; // hide color palette for now
 
 const CompanyDirectory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +46,8 @@ const CompanyDirectory: React.FC = () => {
   const [rows, setRows] = useState<any[][]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<any[] | null>(null);
+  const [clickedRow, setClickedRow] = useState<any[] | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     column: string;
     direction: 'asc' | 'desc';
@@ -48,6 +55,7 @@ const CompanyDirectory: React.FC = () => {
   const [paletteCache, setPaletteCache] = useState<Record<string, string[]>>({});
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortMenuAnchor, setSortMenuAnchor] = useState<null | HTMLElement>(null);
   const [filters, setFilters] = useState<{
     country: string[];
     employees: string[];
@@ -55,7 +63,7 @@ const CompanyDirectory: React.FC = () => {
     revenueRange: string[];
     sector: string[];
     industry: string[];
-    accolades: string[];
+    subIndustry: string[];
   }>({
     country: [],
     employees: [],
@@ -63,7 +71,7 @@ const CompanyDirectory: React.FC = () => {
     revenueRange: [],
     sector: [],
     industry: [],
-    accolades: []
+    subIndustry: []
   });
 
   const revenueRangeOptions = [
@@ -116,6 +124,11 @@ const CompanyDirectory: React.FC = () => {
     loadData();
   }, []);
 
+  // Clear selections when country selection changes
+  useEffect(() => {
+    setFilters(prev => ({ ...prev }));
+  }, [filters.country]);
+
   const columnIndex = (name: string) =>
     headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
 
@@ -128,30 +141,7 @@ const CompanyDirectory: React.FC = () => {
   const industryIdx = columnIndex('industry');
   const accoladesIdx = columnIndex('accolades');
 
-  const logoIdx = columnIndex('logo');
-  const nameIdx = columnIndex('company name');
-  const locationIdxSticky = columnIndex('location');
-  const countryIdxSticky = columnIndex('country');
-
-  const stickyCols = React.useMemo(() => {
-    const widths = new Map<number, number>();
-    if (logoIdx !== -1) widths.set(logoIdx, 72);
-    if (nameIdx !== -1) widths.set(nameIdx, 260);
-    if (locationIdxSticky !== -1) widths.set(locationIdxSticky, 200);
-    if (countryIdxSticky !== -1) widths.set(countryIdxSticky, 160);
-
-    const order = [logoIdx, nameIdx, locationIdxSticky, countryIdxSticky].filter(
-      (i): i is number => i !== -1
-    );
-    let left = 0;
-    const map = new Map<number, { left: number; width: number }>();
-    for (const idx of order) {
-      const w = widths.get(idx) || 160;
-      map.set(idx, { left, width: w });
-      left += w;
-    }
-    return map;
-  }, [logoIdx, nameIdx, locationIdxSticky, countryIdxSticky]);
+  // Removed sticky column layout (table replaced by card grid)
 
   
 
@@ -178,6 +168,11 @@ const CompanyDirectory: React.FC = () => {
       if (typeof val === 'object') return (val.industry ?? val.sector ?? '').toString().trim();
       return val.toString().trim();
     };
+    const extractSubIndustry = (val: any) => {
+      if (!val) return '';
+      if (typeof val === 'object') return (val.subIndustry ?? val.subSector ?? '').toString().trim();
+      return '';
+    };
 
     const sectorOptions = sectorIdx === -1
       ? []
@@ -185,9 +180,19 @@ const CompanyDirectory: React.FC = () => {
     const industryOptions = industryIdx === -1
       ? []
       : Array.from(new Set(rows.map(r => extractIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const subIndustryOptions = industryIdx === -1
+      ? []
+      : Array.from(new Set(rows.map(r => extractSubIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
+    const countryOptions = countryIdx === -1
+      ? []
+      : Array.from(new Set(
+          rows.map(r => r[countryIdx])
+            .filter((country: any) => country && country.toString().trim())
+            .map((country: any) => country.toString().trim())
+        )).sort((a, b) => a.localeCompare(b));
     return {
-      country: unique(countryIdx),
+      country: countryOptions,
       // Keep employees in predefined ascending order only
       employees: employeeRangeOptions,
       foundedYear: unique(foundedIdx, foundedYearOptions),
@@ -195,9 +200,9 @@ const CompanyDirectory: React.FC = () => {
       revenueRange: revenueRangeOptions,
       sector: sectorOptions,
       industry: industryOptions,
-      accolades: ['Certified B-Corp', 'S&P 500', 'FTSE 100']
+      subIndustry: subIndustryOptions
     };
-  }, [rows, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx]);
+  }, [rows, filters.country, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx]);
 
   const filteredByFilters = React.useMemo(() => {
     return rows.filter(row => {
@@ -220,6 +225,12 @@ const CompanyDirectory: React.FC = () => {
 
       return (
         match(countryIdx, filters.country) &&
+        (() => {
+          if (locationIdx === -1) return true;
+          const raw = row[locationIdx];
+          if (!raw || typeof raw !== 'object') return false;
+          return true;
+        })() &&
         // Employees: normalize any '10000+' data to '10001+' to align with options
         (() => {
           if (employeesIdx === -1 || filters.employees.length === 0) return true;
@@ -244,28 +255,20 @@ const CompanyDirectory: React.FC = () => {
           const val = typeof raw === 'object' ? (raw.industry ?? raw.sector ?? '').toString().trim() : raw.toString().trim();
           return filters.industry.includes(val);
         })() &&
-        // Accolades filter (Certified B-Corp, S&P 500, FTSE 100)
+        // Sub-industry filter
         (() => {
-          if (accoladesIdx === -1 || filters.accolades.length === 0) return true;
-          const raw = row[accoladesIdx];
-          if (!raw) return false;
-          const toStrArr = (v: any): string[] => Array.isArray(v) ? v : [v];
-          const vals = toStrArr(raw).map(x => (x ?? '').toString().toLowerCase());
-          const hasBCorp = vals.some(v => v.includes('certified_b_corporation'));
-          const hasSP500 = vals.some(v => v.includes('s-and-p-500'));
-          const hasFTSE = vals.some(v => v.includes('encrypted-tbn0.gstatic.com'));
-          const present: string[] = [];
-          if (hasBCorp) present.push('Certified B-Corp');
-          if (hasSP500) present.push('S&P 500');
-          if (hasFTSE) present.push('FTSE 100');
-          if (present.length === 0) return false;
-          return filters.accolades.some(a => present.includes(a));
+          if (industryIdx === -1 || filters.subIndustry.length === 0) return true;
+          const raw = row[industryIdx];
+          if (!raw || typeof raw !== 'object') return false;
+          const sub = (raw.subIndustry ?? raw.subSector ?? '').toString().trim();
+          if (!sub) return false;
+          return filters.subIndustry.includes(sub);
         })() &&
         foundedYearMatch() &&
         match(revenueIdx, filters.revenueRange)
       );
     });
-  }, [rows, filters, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, accoladesIdx]);
+  }, [rows, filters, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx]);
 
   const searchFilteredRows = filteredByFilters.filter(row =>
     row.some(
@@ -276,17 +279,17 @@ const CompanyDirectory: React.FC = () => {
   );
 
   const coverageStats = React.useMemo(() => {
-    const cities = new Set<string>();
     const countries = new Set<string>();
     const sectors = new Set<string>();
     const industries = new Set<string>();
     const subIndustries = new Set<string>();
 
-    filteredByFilters.forEach(row => {
+    // Use searchFilteredRows to reflect search results in coverage stats
+    searchFilteredRows.forEach(row => {
       const loc = locationIdx !== -1 ? row[locationIdx] : undefined;
       if (loc && typeof loc === 'object') {
-        const city = (loc.city ?? '').toString().trim();
-        if (city) cities.add(city);
+        const country = (loc.country ?? '').toString().trim();
+        if (country) countries.add(country);
       }
 
       const country = countryIdx !== -1 ? (row[countryIdx] ?? '').toString().trim() : '';
@@ -313,14 +316,13 @@ const CompanyDirectory: React.FC = () => {
     });
 
     return {
-      companies: filteredByFilters.length,
-      cities: cities.size,
+      companies: searchFilteredRows.length,
       countries: countries.size,
       sectors: sectors.size,
       industries: industries.size,
       subIndustries: subIndustries.size
     };
-  }, [filteredByFilters, locationIdx, countryIdx, sectorIdx, industryIdx]);
+  }, [searchFilteredRows, locationIdx, countryIdx, sectorIdx, industryIdx]);
 
   const sortedAndFilteredRows = React.useMemo(() => {
     let result = [...searchFilteredRows];
@@ -375,6 +377,12 @@ const CompanyDirectory: React.FC = () => {
           return (aNum - bNum) * dir;
         }
 
+        if (headerName === 'Bizgrid Score') {
+          const aNum = parseFloat(aValue?.toString() || '0') || 0;
+          const bNum = parseFloat(bValue?.toString() || '0') || 0;
+          return (aNum - bNum) * dir;
+        }
+
         // Default string compare
         return dir * aValue.localeCompare(bValue);
       });
@@ -387,7 +395,7 @@ const CompanyDirectory: React.FC = () => {
     setPage(0);
   }, [searchTerm, filters, sortConfig, rows]);
 
-  const rowsPerPage = 200;
+  const rowsPerPage = 420;
   const paginatedRows = sortedAndFilteredRows.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -609,7 +617,7 @@ const CompanyDirectory: React.FC = () => {
     });
 
   const logoColumnIndex = headers.findIndex(h => h.toLowerCase().includes('logo'));
-  const showPaletteColumn = logoColumnIndex !== -1;
+  const showPaletteColumn = ENABLE_PALETTE && logoColumnIndex !== -1;
 
   useEffect(() => {
     if (!showPaletteColumn) return;
@@ -629,10 +637,9 @@ const CompanyDirectory: React.FC = () => {
     });
   }, [rows, showPaletteColumn, logoColumnIndex, paletteCache]);
 
-  const augmentedHeaders = showPaletteColumn ? [...headers, 'Color Palette'] : headers;
+  // No augmented headers needed for card grid view
 
   return (
-    <>
     <Box>
       <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 400, letterSpacing: '-0.02em' }}>
@@ -674,18 +681,256 @@ const CompanyDirectory: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Dashboard showing hovered company details */}
+      <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 10 }}>
+        <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
+          <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
+            {(() => {
+              const logoIdxDash = headers.findIndex(h => h.toLowerCase() === 'logo');
+              const nameIdxDash = headers.findIndex(h => h.toLowerCase() === 'company name');
+              const displayRow = clickedRow || hoveredRow;
+              const logoUrl = displayRow && logoIdxDash !== -1 ? displayRow[logoIdxDash] : '';
+              const name = displayRow && nameIdxDash !== -1 ? (displayRow[nameIdxDash] || '').toString() : 'Hover a logo';
+              return logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt={name} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain',
+                    padding: 4
+                  }} 
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                />
+              ) : (
+                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>No logo</Typography>
+              );
+            })()}
+          </Box>
+          <Box sx={{ flex: 1, width: '100%' }}>
+            {(() => {
+              const displayRow = clickedRow || hoveredRow;
+              if (!displayRow) return null;
+              
+              const idx = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+              const get = (i: number) => (i !== -1 ? displayRow[i] : '');
+              
+              // Extract Sector, Industry, and Sub-Industry
+              const sectorData = get(idx('Sector'));
+              const industryData = get(idx('Industry')) as any;
+              const sector = typeof sectorData === 'object' ? (sectorData.sector ?? sectorData.industry ?? '').toString() : sectorData.toString();
+              const industry = industryData && typeof industryData === 'object' ? (industryData.industry ?? industryData.sector ?? '').toString() : industryData.toString();
+              const subIndustry = industryData && typeof industryData === 'object' ? (industryData.subIndustry ?? industryData.subSector ?? '').toString() : '';
+              
+              // Create industry chain string
+              const industryChain = [sector, industry, subIndustry].filter(Boolean).join(' > ');
+              
+              return (
+                <>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                      {(() => {
+                        const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                        return nameIdx !== -1 ? (displayRow[nameIdx] || '').toString() : 'Explore companies';
+                      })()}
+                    </Typography>
+                    {(() => {
+                      const bizgridIdx = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+                      const bizgridScore = bizgridIdx !== -1 ? displayRow[bizgridIdx] : '';
+                      if (bizgridScore && bizgridScore.toString().trim()) {
+                        return (
+                          <Tooltip 
+                            title="Bizgrid Score is calculated using an algorithm that takes into account Number of Employees, Legacy, and Revenue Range"
+                            arrow
+                            placement="top"
+                          >
+                            <Box sx={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              px: 2.5, 
+                              py: 0.75, 
+                              borderRadius: 3, 
+                              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', 
+                              color: '#2d3748',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              letterSpacing: '0.5px',
+                              boxShadow: '0 4px 12px rgba(168, 237, 234, 0.3)',
+                              border: '1px solid rgba(255, 255, 255, 0.5)',
+                              backdropFilter: 'blur(10px)',
+                              cursor: 'help'
+                            }}>
+                              <Box sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center',
+                                gap: 0.5
+                              }}>
+                                <Box sx={{ 
+                                  width: 6, 
+                                  height: 6, 
+                                  borderRadius: '50%', 
+                                  backgroundColor: '#4a5568',
+                                  boxShadow: '0 0 8px rgba(74, 85, 104, 0.4)'
+                                }} />
+                                Bizgrid Score: {bizgridScore.toString()}
+                              </Box>
+                            </Box>
+                          </Tooltip>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {industryChain && (
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: 'text.secondary',
+                          opacity: 0.85,
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        {industryChain}
+                      </Typography>
+                    )}
+                  </Box>
+                </>
+              );
+            })()}
+            {(() => {
+              const displayRow = clickedRow || hoveredRow;
+              if (!displayRow) return null;
+              const idx = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+              const get = (i: number) => (i !== -1 ? displayRow[i] : '');
+              const loc = get(idx('Location')) as any;
+              const state = loc && typeof loc === 'object' ? (loc.state ?? '').toString() : '';
+              const country = (get(idx('Country')) || '').toString();
+              const employees = (get(idx('Number of employees')) || '').toString();
+              const founded = (get(idx('Founded year')) || '').toString();
+              const revenue = (get(idx('Revenue range')) || '').toString();
+              const linkedin = (get(idx('LinkedIn')) || '').toString();
+              const website = (get(idx('Website')) || '').toString();
+              const slogan = (get(idx('Slogan')) || '').toString();
+              const accolades = (get(idx('Accolades')) || '').toString();
+              const description = (get(idx('Description')) || '').toString();
+              
+              // Extract Sector, Industry, and Sub-Industry
+              const sectorData = get(idx('Sector'));
+              const industryData = get(idx('Industry')) as any;
+              const sector = typeof sectorData === 'object' ? (sectorData.sector ?? sectorData.industry ?? '').toString() : sectorData.toString();
+              const industry = industryData && typeof industryData === 'object' ? (industryData.industry ?? industryData.sector ?? '').toString() : industryData.toString();
+              const subIndustry = industryData && typeof industryData === 'object' ? (industryData.subIndustry ?? industryData.subSector ?? '').toString() : '';
+              
+              // Create industry chain string
+              const industryChain = [sector, industry, subIndustry].filter(Boolean).join(' > ');
+
+              return (
+                <>
+                  <Grid container spacing={2}>
+                    {/* First Column: Country, Links */}
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                        <Typography variant="subtitle2">Country:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{country || '-'}</Typography>
+                        
+                        <Typography variant="subtitle2">Links:</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          {linkedin && (
+                            <Link 
+                              href={linkedin.startsWith('http') ? linkedin : `https://${linkedin}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                textDecoration: 'none',
+                                '&:hover': {
+                                  textDecoration: 'underline'
+                                }
+                              }}
+                            >
+                              <LinkedInIcon fontSize="small" />
+                            </Link>
+                          )}
+                          {website && (
+                            <Link 
+                              href={website.startsWith('http') ? website : `https://${website}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                textDecoration: 'none',
+                                '&:hover': {
+                                  textDecoration: 'underline'
+                                }
+                              }}
+                            >
+                              <LanguageIcon fontSize="small" />
+                            </Link>
+                          )}
+                          {!linkedin && !website && (
+                            <Typography variant="body2">-</Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    </Grid>
+                    
+                    {/* Second Column: Employee, Slogan */}
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                        <Typography variant="subtitle2">Employee:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{employees || '-'}</Typography>
+                        
+                        <Typography variant="subtitle2">Slogan:</Typography>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{slogan || '-'}</Typography>
+                      </Box>
+                    </Grid>
+                    
+                    {/* Third Column: Founded, Revenue */}
+                    <Grid item xs={12} md={4}>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                        <Typography variant="subtitle2">Founded:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{founded || '-'}</Typography>
+                        
+                        <Typography variant="subtitle2">Revenue:</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{revenue || '-'}</Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                  <Box sx={{ mt: 2 }}>
+                    <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid rgba(0,0,0,0.12)', background: 'transparent' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                        <Typography variant="subtitle2" component="span">Description:</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', flex: 1 }}>{description || '-'}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </>
+              );
+            })()}
+          </Box>
+        </Box>
+      </Paper>
+
       {/* Our coverage stats card */}
-      <Paper elevation={0} sx={{ mb: 0.5, p: 1.25, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Typography variant="h6" sx={{ opacity: 0.95, minWidth: 120, fontWeight: 600 }}>Our Coverage</Typography>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 1.5,  // Increased padding for better spacing
+            borderRadius: 1.5, 
+            backgroundColor: 'background.paper', 
+            border: '1px solid rgba(0,0,0,0.12)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}
+        >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', margin: 0 }}>
+          <Typography variant="h6" sx={{ opacity: 0.95, minWidth: 120, fontWeight: 600, my: 0, lineHeight: 1.5 }}>Our Coverage</Typography>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', flex: 1, minWidth: 'min-content' }}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
               <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.companies}</Typography>
               <Typography variant="caption" color="textSecondary">companies</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.cities}</Typography>
-              <Typography variant="caption" color="textSecondary">cities</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
               <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.countries}</Typography>
@@ -704,6 +949,14 @@ const CompanyDirectory: React.FC = () => {
               <Typography variant="caption" color="textSecondary">sub-industries</Typography>
             </Box>
           </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<SortIcon />}
+            onClick={(e) => setSortMenuAnchor(e.currentTarget)}
+          >
+            Sort
+          </Button>
         </Box>
       </Paper>
 
@@ -718,310 +971,75 @@ const CompanyDirectory: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-      <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-        <TableContainer sx={{ maxHeight: 'calc(100vh - 120px)', overflow: 'auto' }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                {augmentedHeaders.map((header, index) => {
-                  const normalizedHeader = header.toString().trim().toLowerCase();
-                  const isDescription = normalizedHeader === 'description';
-                  const isSortable =
-                    header === 'Company Name' ||
-                    header === 'Country' ||
-                    header === 'Revenue range' ||
-                    header === 'Founded year' ||
-                    header === 'Number of employees';
-                  const displayHeader =
-                    normalizedHeader === 'sector' || normalizedHeader === 'primary business'
-                      ? 'Sector'
-                      : header;
-
-                  return (
-                    <TableCell
-                      key={index}
-                      align="center"
-                      sx={{
-                        textAlign: 'center',
-                        backgroundColor: '#0B2740',
-                        ...(stickyCols.has(index)
-                          ? {
-                              position: 'sticky',
-                              left: stickyCols.get(index)!.left,
-                              zIndex: 3,
-                              backgroundColor: '#0B2740',
-                              minWidth: stickyCols.get(index)!.width,
-                              maxWidth: stickyCols.get(index)!.width,
-                              boxShadow: index === Array.from(stickyCols.keys()).slice(-1)[0]
-                                ? 'inset -1px 0 0 rgba(0,0,0,0.12)'
-                                : undefined
-                            }
-                          : {}),
-                        ...(isDescription
-                          ? { minWidth: '500px', maxWidth: '800px', whiteSpace: 'normal', wordWrap: 'break-word' }
-                          : {})
-                      }}
-                    >
-                      {isSortable ? (
-                        <TableSortLabel
-                          active={sortConfig?.column === header}
-                          direction={sortConfig?.column === header ? sortConfig.direction : 'asc'}
-                          onClick={() => handleSort(header)}
-                          sx={{
-                            color: 'white !important',
-                            width: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            '& .MuiTableSortLabel-icon': {
-                              color: 'white !important'
-                            },
-                            '&:hover': {
-                              color: 'white !important'
-                            },
-                            '&.Mui-active': {
-                              color: 'white !important'
-                            }
-                          }}
-                        >
-                          {displayHeader}
-                        </TableSortLabel>
-                      ) : (
-                        <Box sx={{ color: 'white' }}>{displayHeader}</Box>
-                      )}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedAndFilteredRows.length > 0 ? (
-                paginatedRows.map((row, rowIndex) => (
-                  <TableRow key={`${page}-${rowIndex}`} hover>
-                    {row.map((cell, cellIndex) => {
-                      const headerRaw = headers[cellIndex] || '';
-                      const header = headerRaw.toString().trim().toLowerCase();
-                      const isImage = header.includes('logo') || header.includes('image');
-                      const isAccolades = header === 'accolades';
-                      const isUrl = (header.includes('url') || header.includes('website') || header.includes('linkedin')) && !isImage;
-                      const isLocation = header === 'location';
-                      const isSector =
-                        header === 'sector';
-                      const isIndustry =
-                        header === 'industry';
-                      const isDescription = header === 'description';
-                      const isSlogan = header === 'slogan';
-                      const isRevenueRange = header === 'revenue range';
-                      const isEmployeeCount = header === 'number of employees';
-                      const isFoundedYear = header === 'founded year';
-                      const revenueStyle = isRevenueRange ? getRevenueStyle(cell) : {};
-                      const employeeStyle = isEmployeeCount ? getEmployeeStyle(cell) : {};
-                      const foundedStyle = isFoundedYear ? getFoundedYearStyle(cell) : {};
-                      
-                      return (
-                        <TableCell 
-                          key={cellIndex}
-                          align="center"
-                          sx={{
-                            ...(stickyCols.has(cellIndex)
-                              ? {
-                                  position: 'sticky',
-                                  left: stickyCols.get(cellIndex)!.left,
-                                  zIndex: 1,
-                                  backgroundColor: 'background.paper',
-                                  minWidth: stickyCols.get(cellIndex)!.width,
-                                  maxWidth: stickyCols.get(cellIndex)!.width,
-                                  boxShadow: cellIndex === Array.from(stickyCols.keys()).slice(-1)[0]
-                                    ? 'inset -1px 0 0 rgba(0,0,0,0.06)'
-                                    : undefined
-                                }
-                              : {}),
-                            ...(isDescription
-                              ? { minWidth: '400px', maxWidth: '600px', whiteSpace: 'normal', wordWrap: 'break-word' }
-                              : { whiteSpace: 'nowrap' }),
-                            ...revenueStyle,
-                            ...employeeStyle,
-                            ...foundedStyle
-                          }}
-                        >
-                          {(isImage || isAccolades) && cell ? (
-                            Array.isArray(cell) && isAccolades ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75 }}>
-                                {cell.map((url: string, idx: number) => {
-                                  const label = url.includes('s-and-p-500')
-                                    ? "S&P 500"
-                                    : url.toLowerCase().includes('certified_b_corporation')
-                                    ? 'Certified B-Corp'
-                                    : url.includes('encrypted-tbn0.gstatic.com')
-                                    ? 'FTSE 100'
-                                    : 'Accolade';
-                                  return (
-                                    <Tooltip key={`${url}-${idx}`} title={label} placement="top">
-                                      <img
-                                        src={url}
-                                        alt={label}
-                                        style={{ width: '40px', height: '40px', objectFit: 'contain' }}
-                                        onError={(e) => {
-                                          (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                      />
-                                    </Tooltip>
-                                  );
-                                })}
-                              </Box>
-                            ) : (
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {isAccolades ? (
-                                  (() => {
-                                    const url = cell as string;
-                                    const label = url.includes('s-and-p-500')
-                                      ? "S&P 500"
-                                      : url.toLowerCase().includes('certified_b_corporation')
-                                      ? 'Certified B-Corp'
-                                      : url.includes('encrypted-tbn0.gstatic.com')
-                                      ? 'FTSE 100'
-                                      : 'Accolade';
-                                    return (
-                                      <Tooltip title={label} placement="top">
-                                        <img
-                                          src={url}
-                                          alt={label}
-                                          style={{ width: '40px', height: '40px', objectFit: 'contain' }}
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                          }}
-                                        />
-                                      </Tooltip>
-                                    );
-                                  })()
-                                ) : isSlogan ? (
-                                  cell ? (
-                                    <Tooltip title={cell.toString()} placement="top">
-                                      <CampaignIcon color="primary" />
-                                    </Tooltip>
-                                  ) : null
-                                ) : (
-                                  <img 
-                                    src={cell}
-                                    alt={'Logo'}
-                                    style={{ maxWidth: '40px', maxHeight: '40px', objectFit: 'contain' }}
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                )}
-                              </Box>
-                            )
-                          ) : isSlogan ? (
-                            cell ? (
-                              <Tooltip title={cell.toString()} placement="top">
-                                <CampaignIcon color="primary" />
-                              </Tooltip>
-                            ) : null
-                          ) : isLocation && typeof cell === 'object' ? (
-                            <Box>
-                              <Typography variant="body2">{cell.city}</Typography>
-                              <Typography variant="caption" color="textSecondary">{cell.state}</Typography>
-                            </Box>
-                          ) : isSector && cell ? (
-                            <Typography variant="body2">
-                              {typeof cell === 'object'
-                                ? cell.sector || cell.industry || ''
-                                : cell.toString()}
-                            </Typography>
-                          ) : isIndustry && cell ? (
-                            (() => {
-                              if (typeof cell !== 'object') {
-                                return <Typography variant="body2">{cell.toString()}</Typography>;
-                              }
-                              const getField = (obj: any, key: string) => {
-                                const found = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
-                                return found ? obj[found] : undefined;
-                              };
-                              const main = getField(cell, 'sector') ?? getField(cell, 'industry');
-                              const sub = getField(cell, 'subSector') ?? getField(cell, 'subIndustry');
-                              return (
-                                <Box>
-                                  <Typography variant="body2">{main || ''}</Typography>
-                                  {sub ? (
-                                    <Typography variant="caption" color="textSecondary">
-                                      {sub}
-                                    </Typography>
-                                  ) : null}
-                                </Box>
-                              );
-                            })()
-                          ) : isUrl && cell ? (
-                            <IconButton
-                              size="small"
-                              href={cell.startsWith('http') ? cell : `https://${cell}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {header.includes('linkedin') ? (
-                                <LinkedInIcon color="primary" />
-                              ) : (
-                                <OpenInNewIcon />
-                              )}
-                            </IconButton>
-                          ) : (
-                            cell || ''
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                    {showPaletteColumn && (
-                      <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-                        {(() => {
-                          const logoUrl = row[logoColumnIndex];
-                          const colors =
-                            (typeof logoUrl === 'string' && paletteCache[logoUrl]) || [];
-                          const swatches = sortColorsLightToDark(colors);
-                          while (swatches.length < MAX_PALETTE_COLORS) {
-                            swatches.push('#ffffff');
+        <>
+          <Box sx={{ mt: 1, height: 'calc(100vh - 280px)', overflowY: 'auto', pr: 1, pb: 2 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+            {paginatedRows.map((row, rowIndex) => {
+              const logoIdxGrid = headers.findIndex(h => h.toLowerCase() === 'logo');
+              const nameIdxGrid = headers.findIndex(h => h.toLowerCase() === 'company name');
+              const bizgridIdxGrid = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+              const logoUrl = logoIdxGrid !== -1 ? row[logoIdxGrid] : '';
+              const name = nameIdxGrid !== -1 ? (row[nameIdxGrid] || '').toString() : '';
+              const bizgridScore = bizgridIdxGrid !== -1 ? row[bizgridIdxGrid] : '';
+              return (
+                <Box sx={{ flex: '0 0 auto' }} key={`${page}-${rowIndex}`}>
+                  <Tooltip title={name || 'Company name'} arrow>
+                    <Box sx={{ position: 'relative' }}>
+                      <Card 
+                        elevation={1} 
+                        sx={{ 
+                          borderRadius: 2,
+                          width: 48,
+                          height: 48, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          p: 0.25, 
+                          transition: 'transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                          backgroundColor: clickedRow === row ? 'rgba(0, 0, 0, 0.04)' : 'white',
+                          '&:hover': { 
+                            transform: 'translateY(-2px)', 
+                            boxShadow: 3,
+                            cursor: 'pointer'
                           }
-                          if (!swatches.length) return '';
-                          return (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                              {swatches.slice(0, MAX_PALETTE_COLORS).map((color, idx) => (
-                                <Box
-                                  key={`${color}-${idx}`}
-                                  sx={{
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: 0.5,
-                                    backgroundColor: color,
-                                    border: '1px solid rgba(0,0,0,0.1)'
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          );
-                        })()}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={headers.length || 1} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body1" color="textSecondary">
-                      {headers.length === 0 ? 'Loading...' : 'No data found.'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          component="div"
-          count={sortedAndFilteredRows.length}
-          page={page}
-          onPageChange={(_, newPage) => setPage(newPage)}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[rowsPerPage]}
-        />
-      </Paper>
+                        }}
+                        onMouseEnter={() => !clickedRow && setHoveredRow(row)}
+                        onClick={() => {
+                          if (clickedRow === row) {
+                            setClickedRow(null);
+                            setHoveredRow(null);
+                          } else {
+                            setClickedRow(row);
+                            setHoveredRow(row);
+                          }
+                        }}
+                      >
+                        <CardActionArea sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {logoUrl ? (
+                            <img src={logoUrl} alt={name || 'Logo'} style={{ maxWidth: '100%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <Typography variant="caption" color="textSecondary" sx={{ px: 1, textAlign: 'center' }}>{name || 'No logo'}</Typography>
+                          )}
+                        </CardActionArea>
+                      </Card>
+                    </Box>
+                  </Tooltip>
+                </Box>
+              );
+            })}
+            </Box>
+          </Box>
+          <Box sx={{ mt: 1 }}>
+            <TablePagination
+              component="div"
+              count={sortedAndFilteredRows.length}
+              page={page}
+              onPageChange={(_, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={[rowsPerPage]}
+            />
+          </Box>
+        </>
       )}
     </Box>
 
@@ -1073,16 +1091,16 @@ const CompanyDirectory: React.FC = () => {
             />
             <Autocomplete
               multiple
-              options={filterOptions.accolades}
-              value={filters.accolades}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, accolades: value }))}
+              options={filterOptions.subIndustry}
+              value={filters.subIndustry}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, subIndustry: value }))}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
                   <Chip label={option} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Accolades" placeholder="Select accolade(s)" />
+                <TextField {...params} label="Sub-industry" placeholder="Search sub-industry" />
               )}
             />
             <Autocomplete
@@ -1132,7 +1150,7 @@ const CompanyDirectory: React.FC = () => {
         <DialogActions>
           <Button
             onClick={() =>
-              setFilters({ country: [], employees: [], foundedYear: [], revenueRange: [], sector: [], industry: [], accolades: [] })
+              setFilters({ country: [], employees: [], foundedYear: [], revenueRange: [], sector: [], industry: [], subIndustry: [] })
             }
           >
             Clear
@@ -1142,7 +1160,118 @@ const CompanyDirectory: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+
+      {/* Sort Menu */}
+      <Menu
+        anchorEl={sortMenuAnchor}
+        open={Boolean(sortMenuAnchor)}
+        onClose={() => setSortMenuAnchor(null)}
+        PaperProps={{
+          sx: { minWidth: 220 }
+        }}
+      >
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Company Name', direction: sortConfig?.column === 'Company Name' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Company Name'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Company Name' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Company Name' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Company Name' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Company Name' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Company Name' ? 600 : 400 }}>
+              Alphabetical Order {sortConfig?.column === 'Company Name' ? (sortConfig?.direction === 'asc' ? '(A to Z)' : '(Z to A)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Revenue range', direction: sortConfig?.column === 'Revenue range' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Revenue range'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Revenue range' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Revenue range' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Revenue range' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Revenue range' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Revenue range' ? 600 : 400 }}>
+              Revenue Range {sortConfig?.column === 'Revenue range' ? (sortConfig?.direction === 'asc' ? '(Low to High)' : '(High to Low)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Founded year', direction: sortConfig?.column === 'Founded year' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Founded year'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Founded year' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Founded year' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Founded year' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Founded year' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Founded year' ? 600 : 400 }}>
+              Founded Year {sortConfig?.column === 'Founded year' ? (sortConfig?.direction === 'asc' ? '(Oldest to Newest)' : '(Newest to Oldest)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Number of employees', direction: sortConfig?.column === 'Number of employees' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Number of employees'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Number of employees' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Number of employees' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Number of employees' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Number of employees' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Number of employees' ? 600 : 400 }}>
+              Number of Employees {sortConfig?.column === 'Number of employees' ? (sortConfig?.direction === 'asc' ? '(Few to Many)' : '(Many to Few)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Bizgrid Score', direction: sortConfig?.column === 'Bizgrid Score' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Bizgrid Score'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Bizgrid Score' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Bizgrid Score' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Bizgrid Score' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Bizgrid Score' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Bizgrid Score' ? 600 : 400 }}>
+              Bizgrid Score {sortConfig?.column === 'Bizgrid Score' ? (sortConfig?.direction === 'asc' ? '(Low to High)' : '(High to Low)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+    </Box>
   );
 };
 
