@@ -43,8 +43,9 @@ const ENABLE_PALETTE = false; // hide color palette for now
 
 const CompanyDirectory: React.FC = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  // Force desktop view by setting isMobile and isTablet to false
+  const isMobile = false;
+  const isTablet = false;
   const [searchTerm, setSearchTerm] = useState('');
   
   // Responsive styles
@@ -455,7 +456,7 @@ const CompanyDirectory: React.FC = () => {
     setPage(0);
   }, [searchTerm, filters, sortConfig, rows]);
 
-  const rowsPerPage = 420;
+  const rowsPerPage = 840;
   const paginatedRows = sortedAndFilteredRows.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
@@ -999,38 +1000,71 @@ const CompanyDirectory: React.FC = () => {
             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
           }}
         >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', margin: 0 }}>
-          <Typography variant="h6" sx={{ opacity: 0.95, minWidth: 120, fontWeight: 600, my: 0, lineHeight: 1.5 }}>Our Coverage</Typography>
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', flex: 1, minWidth: 'min-content' }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.companies}</Typography>
-              <Typography variant="caption" color="textSecondary">companies</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.countries}</Typography>
-              <Typography variant="caption" color="textSecondary">countries</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.sectors}</Typography>
-              <Typography variant="caption" color="textSecondary">sectors</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.industries}</Typography>
-              <Typography variant="caption" color="textSecondary">industries</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-              <Typography variant="h6" sx={{ lineHeight: 1 }}>{coverageStats.subIndustries}</Typography>
-              <Typography variant="caption" color="textSecondary">sub-industries</Typography>
-            </Box>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: { xs: 1.5, sm: 2, md: 3 }, 
+          whiteSpace: 'nowrap', 
+          margin: 0, 
+          px: 1
+        }}>
+          <Typography variant="h6" sx={{ 
+            opacity: 0.95, 
+            minWidth: { xs: 90, sm: 100, md: 120 }, 
+            fontWeight: 600, 
+            my: 0, 
+            lineHeight: 1.5, 
+            flexShrink: 0,
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+          }}>Our Coverage</Typography>
+          <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2, md: 3 }, flex: 1, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}>
+            {[
+              { value: coverageStats.companies, label: 'companies' },
+              { value: coverageStats.countries, label: 'countries' },
+              { value: coverageStats.sectors, label: 'sectors' },
+              { value: coverageStats.industries, label: 'industries' },
+              { value: coverageStats.subIndustries, label: 'sub-industries' }
+            ].map((item, index) => (
+              <Box key={index} sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, flexShrink: 0 }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    lineHeight: 1, 
+                    fontSize: { 
+                      xs: '0.9rem', 
+                      sm: '1rem', 
+                      md: '1.25rem' 
+                    } 
+                  }}
+                >
+                  {item.value}
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  color="textSecondary"
+                  sx={{
+                    fontSize: {
+                      xs: '0.7rem',
+                      sm: '0.75rem',
+                      md: '0.8rem'
+                    }
+                  }}
+                >
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
           </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SortIcon />}
-            onClick={(e) => setSortMenuAnchor(e.currentTarget)}
-          >
-            Sort
-          </Button>
+          <Box sx={{ flexShrink: 0, ml: 'auto', pl: { xs: 1, sm: 2 } }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SortIcon />}
+              onClick={(e) => setSortMenuAnchor(e.currentTarget)}
+            >
+              Sort
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
