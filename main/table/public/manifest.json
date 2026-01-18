@@ -1,6 +1,6 @@
 {
-  "short_name": "Company Directory",
-  "name": "Company Directory Application",
+  "short_name": "Bizgrid Directory",
+  "name": "Bizgrid Directory Application",
   "icons": [],
   "start_url": ".",
   "display": "standalone",

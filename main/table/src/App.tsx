@@ -16,6 +16,15 @@ const theme = createTheme({
       default: '#f5f5f5',
     },
   },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   typography: {
     fontFamily: [
       'Merriweather',
@@ -27,26 +36,62 @@ const theme = createTheme({
       'system-ui',
       'serif',
     ].join(','),
+    htmlFontSize: 16,
     fontSize: 14,
     h1: {
       fontFamily: 'Merriweather, serif',
       fontWeight: 700,
+      fontSize: '2.5rem',
+      [createTheme().breakpoints.down('md')]: {
+        fontSize: '2rem',
+      },
+      [createTheme().breakpoints.down('sm')]: {
+        fontSize: '1.75rem',
+      },
     },
     h2: {
       fontFamily: 'Merriweather, serif',
       fontWeight: 600,
+      fontSize: '2rem',
+      [createTheme().breakpoints.down('md')]: {
+        fontSize: '1.75rem',
+      },
+      [createTheme().breakpoints.down('sm')]: {
+        fontSize: '1.5rem',
+      },
     },
     h3: {
       fontFamily: 'Merriweather, serif',
       fontWeight: 600,
+      fontSize: '1.75rem',
+      [createTheme().breakpoints.down('md')]: {
+        fontSize: '1.5rem',
+      },
+      [createTheme().breakpoints.down('sm')]: {
+        fontSize: '1.25rem',
+      },
     },
     h4: {
       fontFamily: 'Merriweather, serif',
       fontWeight: 600,
+      fontSize: '1.5rem',
+      [createTheme().breakpoints.down('md')]: {
+        fontSize: '1.25rem',
+      },
+      [createTheme().breakpoints.down('sm')]: {
+        fontSize: '1.1rem',
+      },
     },
     h5: {
       fontFamily: 'Merriweather, serif',
       fontWeight: 600,
+      fontSize: '1.25rem',
+      [createTheme().breakpoints.down('md')]: {
+        fontSize: '1.1rem',
+      },
+      [createTheme().breakpoints.down('sm')]: {
+        fontSize: '1rem',
+      },
     },
     h6: {
       fontFamily: 'Merriweather, serif',

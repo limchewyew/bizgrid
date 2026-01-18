@@ -26,7 +26,8 @@ const ALLOWED_COLUMNS = [
   'AEX?',
   'Slogan',
   'Accolades',
-  'Bizgrid Score'
+  'Bizgrid Score',
+  'Activity'
   // Note: Primary Business intentionally removed per latest requirements
 ];
 
@@ -45,8 +46,9 @@ const DISPLAY_COLUMNS = [
   'Sector',     // show sector as its own column
   'Industry',   // industry will keep showing industry/sub-industry combined
   'Slogan',
-  'Accolades',   // keep accolades as the rightmost data column
-  'Bizgrid Score'
+  'Accolades',
+  'Bizgrid Score',
+  'Activity'   // Add Activity column
 ];
 
 export interface SheetData {

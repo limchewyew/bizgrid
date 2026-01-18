@@ -36,12 +36,56 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CheckIcon from '@mui/icons-material/Check';
 import { fetchDataFromSheet } from '../../services/googleSheets';
+import { useTheme, useMediaQuery } from '@mui/material';
 
 // Feature flags
 const ENABLE_PALETTE = false; // hide color palette for now
 
 const CompanyDirectory: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Responsive styles
+  const responsiveStyles = {
+    container: {
+      p: isMobile ? 1 : 2,
+      mt: 2,
+    },
+    searchContainer: {
+      mb: 2,
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      gap: 2,
+    },
+    searchField: {
+      flex: 1,
+      minWidth: isMobile ? '100%' : 'auto',
+    },
+    tableContainer: {
+      maxHeight: 'calc(100vh - 200px)',
+      overflow: 'auto',
+    },
+    table: {
+      minWidth: isMobile ? 'auto' : 650,
+    },
+    tableCell: {
+      py: isMobile ? 1 : 1.5,
+      px: isMobile ? 0.5 : 2,
+      fontSize: isMobile ? '0.75rem' : '0.875rem',
+    },
+    headerCell: {
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    },
+    pagination: {
+      mt: 2,
+      '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+        marginBottom: isMobile ? 1 : 0,
+      },
+    },
+  };
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<any[][]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +108,7 @@ const CompanyDirectory: React.FC = () => {
     sector: string[];
     industry: string[];
     subIndustry: string[];
+    activity: string[];
   }>({
     country: [],
     employees: [],
@@ -71,7 +116,8 @@ const CompanyDirectory: React.FC = () => {
     revenueRange: [],
     sector: [],
     industry: [],
-    subIndustry: []
+    subIndustry: [],
+    activity: []
   });
 
   const revenueRangeOptions = [
@@ -135,15 +181,14 @@ const CompanyDirectory: React.FC = () => {
   const countryIdx = columnIndex('country');
   const employeesIdx = columnIndex('number of employees');
   const foundedIdx = columnIndex('founded year');
-  const revenueIdx = columnIndex('revenue range');
+  const industryIdx = columnIndex('industry');
   const locationIdx = columnIndex('location');
   const sectorIdx = columnIndex('sector');
-  const industryIdx = columnIndex('industry');
+  const revenueIdx = columnIndex('revenue range');
   const accoladesIdx = columnIndex('accolades');
+  const activityIdx = columnIndex('activity');
 
   // Removed sticky column layout (table replaced by card grid)
-
-  
 
   const filterOptions = React.useMemo(() => {
     const unique = (idx: number, predefinedOptions?: string[]) =>
@@ -183,6 +228,13 @@ const CompanyDirectory: React.FC = () => {
     const subIndustryOptions = industryIdx === -1
       ? []
       : Array.from(new Set(rows.map(r => extractSubIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      
+    const activityOptions = activityIdx === -1
+      ? []
+      : Array.from(new Set(rows.map(r => {
+          const val = r[activityIdx];
+          return val ? val.toString().trim() : '';
+        }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
     const countryOptions = countryIdx === -1
       ? []
@@ -200,9 +252,10 @@ const CompanyDirectory: React.FC = () => {
       revenueRange: revenueRangeOptions,
       sector: sectorOptions,
       industry: industryOptions,
-      subIndustry: subIndustryOptions
+      subIndustry: subIndustryOptions,
+      activity: activityOptions
     };
-  }, [rows, filters.country, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx]);
+  }, [rows, filters.country, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
 
   const filteredByFilters = React.useMemo(() => {
     return rows.filter(row => {
@@ -263,6 +316,13 @@ const CompanyDirectory: React.FC = () => {
           const sub = (raw.subIndustry ?? raw.subSector ?? '').toString().trim();
           if (!sub) return false;
           return filters.subIndustry.includes(sub);
+        })() &&
+        // Activity filter
+        (() => {
+          if (activityIdx === -1 || filters.activity.length === 0) return true;
+          const val = row[activityIdx];
+          if (!val) return false;
+          return filters.activity.includes(val.toString().trim());
         })() &&
         foundedYearMatch() &&
         match(revenueIdx, filters.revenueRange)
@@ -641,11 +701,17 @@ const CompanyDirectory: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 400, letterSpacing: '-0.02em' }}>
-          Company Directory
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0.5, height: '72px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '56px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+            <img 
+              src="Main Logo.png" 
+              alt="Company Logo" 
+              style={{ height: '56px', width: 'auto', display: 'block' }} 
+            />
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', height: '100%' }}>
           <Button
             variant="outlined"
             size="small"
@@ -664,20 +730,20 @@ const CompanyDirectory: React.FC = () => {
             Filters
           </Button>
           <TextField
-          variant="outlined"
-          size="small"
-          placeholder="Search companies..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ width: 300 }}
-        />
+            variant="outlined"
+            size="small"
+            placeholder="Search companies..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ width: 300, '& .MuiOutlinedInput-root': { height: '40px' } }}
+          />
         </Box>
       </Box>
 
@@ -723,8 +789,12 @@ const CompanyDirectory: React.FC = () => {
               const industry = industryData && typeof industryData === 'object' ? (industryData.industry ?? industryData.sector ?? '').toString() : industryData.toString();
               const subIndustry = industryData && typeof industryData === 'object' ? (industryData.subIndustry ?? industryData.subSector ?? '').toString() : '';
               
-              // Create industry chain string
-              const industryChain = [sector, industry, subIndustry].filter(Boolean).join(' > ');
+              // Get Activity
+              const activityIdx = headers.findIndex(h => h.toLowerCase() === 'activity');
+              const activity = activityIdx !== -1 ? (displayRow[activityIdx] || '').toString() : '';
+              
+              // Create industry chain string including Activity
+              const industryChain = [sector, industry, subIndustry, activity].filter(Boolean).join(' > ');
               
               return (
                 <>
@@ -821,8 +891,12 @@ const CompanyDirectory: React.FC = () => {
               const industry = industryData && typeof industryData === 'object' ? (industryData.industry ?? industryData.sector ?? '').toString() : industryData.toString();
               const subIndustry = industryData && typeof industryData === 'object' ? (industryData.subIndustry ?? industryData.subSector ?? '').toString() : '';
               
-              // Create industry chain string
-              const industryChain = [sector, industry, subIndustry].filter(Boolean).join(' > ');
+              // Get Activity
+              const activityIdx = headers.findIndex(h => h.toLowerCase() === 'activity');
+              const activity = activityIdx !== -1 ? (displayRow[activityIdx] || '').toString() : '';
+              
+              // Create industry chain string including Activity
+              const industryChain = [sector, industry, subIndustry, activity].filter(Boolean).join(' > ');
 
               return (
                 <>
@@ -1105,6 +1179,20 @@ const CompanyDirectory: React.FC = () => {
             />
             <Autocomplete
               multiple
+              options={filterOptions.activity}
+              value={filters.activity}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, activity: value }))}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip label={option} {...getTagProps({ index })} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField {...params} label="Activity" placeholder="Search activities" />
+              )}
+            />
+            <Autocomplete
+              multiple
               options={filterOptions.employees}
               value={filters.employees}
               onChange={(_, value) => setFilters(prev => ({ ...prev, employees: value }))}
@@ -1150,7 +1238,16 @@ const CompanyDirectory: React.FC = () => {
         <DialogActions>
           <Button
             onClick={() =>
-              setFilters({ country: [], employees: [], foundedYear: [], revenueRange: [], sector: [], industry: [], subIndustry: [] })
+              setFilters({ 
+                country: [], 
+                employees: [], 
+                foundedYear: [], 
+                revenueRange: [], 
+                sector: [], 
+                industry: [], 
+                subIndustry: [],
+                activity: [] 
+              })
             }
           >
             Clear
