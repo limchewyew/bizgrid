@@ -702,13 +702,29 @@ const CompanyDirectory: React.FC = () => {
 
   return (
     <Box>
-      <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0.5, height: '72px' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '56px' }}>
+      <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0.5, height: '100px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '80px' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
             <img 
               src="Main Logo.png" 
               alt="Company Logo" 
-              style={{ height: '56px', width: 'auto', display: 'block' }} 
+              style={{ 
+                height: '80px', 
+                width: 'auto', 
+                display: 'block',
+                filter: 'drop-shadow(0 0 15px rgba(0, 120, 255, 0.4))',
+                transition: 'all 0.3s ease-in-out',
+                cursor: 'pointer',
+                transform: 'scale(1)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.9))';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 15px rgba(0, 120, 255, 0.4))';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
             />
           </Box>
         </Box>
