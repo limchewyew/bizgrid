@@ -454,7 +454,14 @@ const CompanyDirectory: React.FC = () => {
 
   useEffect(() => {
     setPage(0);
-  }, [searchTerm, filters, sortConfig, rows]);
+    // Trigger refresh when filters or sort config changes
+    loadData();
+  }, [filters, sortConfig]);
+
+  // Keep this effect for page changes without refresh
+  useEffect(() => {
+    setPage(0);
+  }, [searchTerm, rows]);
 
   const rowsPerPage = 840;
   const paginatedRows = sortedAndFilteredRows.slice(
@@ -701,34 +708,49 @@ const CompanyDirectory: React.FC = () => {
   // No augmented headers needed for card grid view
 
   return (
-    <Box>
-      <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0.5, height: '100px' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '80px' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-            <img 
-              src="Main Logo.png" 
-              alt="Company Logo" 
-              style={{ 
-                height: '80px', 
-                width: 'auto', 
-                display: 'block',
-                filter: 'drop-shadow(0 0 15px rgba(0, 120, 255, 0.4))',
-                transition: 'all 0.3s ease-in-out',
-                cursor: 'pointer',
-                transform: 'scale(1)'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.filter = 'drop-shadow(0 0 25px rgba(255, 215, 0, 0.9))';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.filter = 'drop-shadow(0 0 15px rgba(0, 120, 255, 0.4))';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            />
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', height: '100%' }}>
+  <Box>
+    <Box sx={{ mb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0, height: '100px' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box component="img" 
+          src="/Main Logo.png" 
+          alt="BizGrid Logo" 
+          sx={{ 
+            height: 60, 
+            width: 'auto',
+            objectFit: 'contain',
+            [theme.breakpoints.down('sm')]: {
+              height: 48
+            },
+            '&:hover': {
+              filter: 'drop-shadow(0 0 15px rgba(0, 120, 255, 0.4))',
+              transform: 'scale(1.05)',
+              transition: 'all 0.3s ease'
+            }
+          }}
+        />
+        <Typography 
+          variant="h2" 
+          component="h1"
+          sx={{ 
+            fontWeight: 700,
+            fontFamily: 'Inter, sans-serif',
+            color: theme.palette.primary.main,
+            [theme.breakpoints.down('sm')]: {
+              fontSize: '2rem'
+            },
+            background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textFillColor: 'transparent',
+            letterSpacing: '0.1em'
+          }}
+        >
+          BIZGRID
+        </Typography>
+      </Box>
+      <Box sx={{ flexGrow: 1 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Button
             variant="outlined"
             size="small"
@@ -1016,14 +1038,14 @@ const CompanyDirectory: React.FC = () => {
             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
           }}
         >
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: { xs: 1.5, sm: 2, md: 3 }, 
-          whiteSpace: 'nowrap', 
-          margin: 0, 
-          px: 1
-        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: { xs: 1.5, sm: 2, md: 3 }, 
+            whiteSpace: 'nowrap', 
+            margin: 0, 
+            px: 1
+          }}>
           <Typography variant="h6" sx={{ 
             opacity: 0.95, 
             minWidth: { xs: 90, sm: 100, md: 120 }, 
