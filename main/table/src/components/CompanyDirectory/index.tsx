@@ -25,6 +25,16 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Divider,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -35,6 +45,10 @@ import SortIcon from '@mui/icons-material/Sort';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CheckIcon from '@mui/icons-material/Check';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import BalanceIcon from '@mui/icons-material/Balance';
+import ClearIcon from '@mui/icons-material/Clear';
+import AddIcon from '@mui/icons-material/Add';
 import { fetchDataFromSheet } from '../../services/googleSheets';
 import { useTheme, useMediaQuery } from '@mui/material';
 
@@ -47,6 +61,42 @@ const CompanyDirectory: React.FC = () => {
   const isMobile = false;
   const isTablet = false;
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentTab, setCurrentTab] = useState(0);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setCurrentTab(newValue);
+  };
+
+  // Load selected companies from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('selectedCompanies');
+    if (saved) {
+      setSelectedCompanies(JSON.parse(saved));
+    }
+  }, []);
+
+  // Save selected companies to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('selectedCompanies', JSON.stringify(selectedCompanies));
+  }, [selectedCompanies]);
+
+  const toggleCompanySelection = (companyName: string) => {
+    setSelectedCompanies(prev => {
+      if (prev.includes(companyName)) {
+        return prev.filter(name => name !== companyName);
+      } else {
+        if (prev.length >= 6) {
+          return prev; // Don't add more than 6 companies
+        }
+        return [...prev, companyName];
+      }
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedCompanies([]);
+  };
   
   // Responsive styles
   const responsiveStyles = {
@@ -157,6 +207,13 @@ const CompanyDirectory: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await fetchDataFromSheet();
+      
+      // Debug: Log headers and first row of data
+      console.log('Headers:', data.headers);
+      if (data.rows.length > 0) {
+        console.log('First row data:', data.rows[0]);
+      }
+      
       setHeaders(data.headers);
       setRows(data.rows);
       setPaletteCache({});
@@ -344,6 +401,7 @@ const CompanyDirectory: React.FC = () => {
     const sectors = new Set<string>();
     const industries = new Set<string>();
     const subIndustries = new Set<string>();
+    const activities = new Set<string>();
 
     // Use searchFilteredRows to reflect search results in coverage stats
     searchFilteredRows.forEach(row => {
@@ -374,6 +432,13 @@ const CompanyDirectory: React.FC = () => {
         const main = ind.toString().trim();
         if (main) industries.add(main);
       }
+
+      // Add activity to the set
+      const activity = activityIdx !== -1 ? row[activityIdx] : undefined;
+      if (activity) {
+        const activityStr = activity.toString().trim();
+        if (activityStr) activities.add(activityStr);
+      }
     });
 
     return {
@@ -381,9 +446,10 @@ const CompanyDirectory: React.FC = () => {
       countries: countries.size,
       sectors: sectors.size,
       industries: industries.size,
-      subIndustries: subIndustries.size
+      subIndustries: subIndustries.size,
+      activities: activities.size
     };
-  }, [searchFilteredRows, locationIdx, countryIdx, sectorIdx, industryIdx]);
+  }, [searchFilteredRows, locationIdx, countryIdx, sectorIdx, industryIdx, activityIdx]);
 
   const sortedAndFilteredRows = React.useMemo(() => {
     let result = [...searchFilteredRows];
@@ -709,7 +775,8 @@ const CompanyDirectory: React.FC = () => {
 
   return (
   <Box>
-    <Box sx={{ mb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0, height: '100px' }}>
+    {/* Brand and Search Bar */}
+    <Box sx={{ mb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1, pb: 2, borderBottom: '1px solid rgba(0,0,0,0.12)' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Box component="img" 
           src="/Main Logo.png" 
@@ -749,44 +816,87 @@ const CompanyDirectory: React.FC = () => {
           BIZGRID
         </Typography>
       </Box>
-      <Box sx={{ flexGrow: 1 }} />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<RefreshIcon />}
-            onClick={loadData}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<FilterListIcon />}
-            onClick={() => setFilterOpen(true)}
-          >
-            Filters
-          </Button>
-          <TextField
-            variant="outlined"
-            size="small"
-            placeholder="Search companies..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ width: 300, '& .MuiOutlinedInput-root': { height: '40px' } }}
-          />
-        </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<RefreshIcon />}
+          onClick={loadData}
+          disabled={loading}
+        >
+          Refresh
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<FilterListIcon />}
+          onClick={() => setFilterOpen(true)}
+        >
+          Filters
+        </Button>
+        <TextField
+          variant="outlined"
+          size="small"
+          placeholder="Search companies..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ width: 300, '& .MuiOutlinedInput-root': { height: '40px' } }}
+        />
+      </Box>
+    </Box>
+
+    {/* Navigation Tabs */}
+    <Paper 
+      elevation={0} 
+      sx={{ 
+        mb: 3,
+        backgroundColor: 'background.paper',
+        border: '1px solid rgba(0,0,0,0.12)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+      }}
+    >
+      <Tabs 
+        value={currentTab} 
+        onChange={handleTabChange}
+        variant="fullWidth"
+        sx={{ 
+          minHeight: 'auto',
+          '& .MuiTab-root': {
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            minHeight: '40px',
+            py: 1
+          },
+          '& .MuiTabs-indicator': {
+            backgroundColor: theme.palette.primary.main,
+            height: '3px'
+          },
+          '& .MuiTabs-flexContainer': {
+            minHeight: 'auto'
+          }
+        }}
+      >
+        <Tab label="Main Directory" />
+        <Tab label="Competitors" />
+        <Tab label="Comparison" />
+        <Tab label="Statistics" />
+      </Tabs>
+    </Paper>
+
+    <Box sx={{ mb: 0 }}>
+      {/* Content goes here */}
       </Box>
 
-      {/* Dashboard showing hovered company details */}
+      {/* Dashboard showing hovered company details - Hidden in comparison tab */}
+      {currentTab !== 2 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 10 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -1025,6 +1135,7 @@ const CompanyDirectory: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+      )}
 
       {/* Our coverage stats card */}
       <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
@@ -1053,7 +1164,7 @@ const CompanyDirectory: React.FC = () => {
             my: 0, 
             lineHeight: 1.5, 
             flexShrink: 0,
-            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' }
+            fontSize: '0.95rem'
           }}>Our Coverage</Typography>
           <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2, md: 3 }, flex: 1, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none' }}>
             {[
@@ -1061,7 +1172,8 @@ const CompanyDirectory: React.FC = () => {
               { value: coverageStats.countries, label: 'countries' },
               { value: coverageStats.sectors, label: 'sectors' },
               { value: coverageStats.industries, label: 'industries' },
-              { value: coverageStats.subIndustries, label: 'sub-industries' }
+              { value: coverageStats.subIndustries, label: 'sub-industries' },
+              { value: coverageStats.activities, label: 'activities' }
             ].map((item, index) => (
               <Box key={index} sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, flexShrink: 0 }}>
                 <Typography 
@@ -1118,73 +1230,389 @@ const CompanyDirectory: React.FC = () => {
         </Box>
       ) : (
         <>
-          <Box sx={{ mt: 1, height: 'calc(100vh - 280px)', overflowY: 'auto', pr: 1, pb: 2 }}>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
-            {paginatedRows.map((row, rowIndex) => {
-              const logoIdxGrid = headers.findIndex(h => h.toLowerCase() === 'logo');
-              const nameIdxGrid = headers.findIndex(h => h.toLowerCase() === 'company name');
-              const bizgridIdxGrid = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
-              const logoUrl = logoIdxGrid !== -1 ? row[logoIdxGrid] : '';
-              const name = nameIdxGrid !== -1 ? (row[nameIdxGrid] || '').toString() : '';
-              const bizgridScore = bizgridIdxGrid !== -1 ? row[bizgridIdxGrid] : '';
-              return (
-                <Box sx={{ flex: '0 0 auto' }} key={`${page}-${rowIndex}`}>
-                  <Tooltip title={name || 'Company name'} arrow>
-                    <Box sx={{ position: 'relative' }}>
-                      <Card 
-                        elevation={1} 
-                        sx={{ 
-                          borderRadius: 2,
-                          width: 48,
-                          height: 48, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          p: 0.25, 
-                          transition: 'transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease',
-                          backgroundColor: clickedRow === row ? 'rgba(0, 0, 0, 0.04)' : 'white',
-                          '&:hover': { 
-                            transform: 'translateY(-2px)', 
-                            boxShadow: 3,
-                            cursor: 'pointer'
-                          }
-                        }}
-                        onMouseEnter={() => !clickedRow && setHoveredRow(row)}
-                        onClick={() => {
-                          if (clickedRow === row) {
-                            setClickedRow(null);
-                            setHoveredRow(null);
-                          } else {
-                            setClickedRow(row);
-                            setHoveredRow(row);
-                          }
-                        }}
-                      >
-                        <CardActionArea sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {logoUrl ? (
-                            <img src={logoUrl} alt={name || 'Logo'} style={{ maxWidth: '100%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                          ) : (
-                            <Typography variant="caption" color="textSecondary" sx={{ px: 1, textAlign: 'center' }}>{name || 'No logo'}</Typography>
-                          )}
-                        </CardActionArea>
-                      </Card>
+          {currentTab === 0 && ( // Main Directory tab
+            <>
+              <Box sx={{ mt: 1, height: 'calc(100vh - 280px)', overflowY: 'auto', pr: 1, pb: 2 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+                {paginatedRows.map((row, rowIndex) => {
+                  const logoIdxGrid = headers.findIndex(h => h.toLowerCase() === 'logo');
+                  const nameIdxGrid = headers.findIndex(h => h.toLowerCase() === 'company name');
+                  const bizgridIdxGrid = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+                  const logoUrl = logoIdxGrid !== -1 ? row[logoIdxGrid] : '';
+                  const name = nameIdxGrid !== -1 ? (row[nameIdxGrid] || '').toString() : '';
+                  const bizgridScore = bizgridIdxGrid !== -1 ? row[bizgridIdxGrid] : '';
+                  return (
+                    <Box sx={{ flex: '0 0 auto' }} key={`${page}-${rowIndex}`}>
+                      <Tooltip title={name || 'Company name'} arrow>
+                        <Box sx={{ position: 'relative' }}>
+                          <Card 
+                            elevation={1} 
+                            sx={{ 
+                              borderRadius: 2,
+                              width: 48,
+                              height: 48, 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              p: 0.25, 
+                              transition: 'transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                              backgroundColor: clickedRow === row ? 'rgba(0, 0, 0, 0.04)' : 'white',
+                              '&:hover': { 
+                                transform: 'translateY(-2px)', 
+                                boxShadow: 3,
+                                cursor: 'pointer'
+                              }
+                            }}
+                            onMouseEnter={() => !clickedRow && setHoveredRow(row)}
+                            onClick={() => {
+                              if (clickedRow === row) {
+                                setClickedRow(null);
+                                setHoveredRow(null);
+                              } else {
+                                setClickedRow(row);
+                                setHoveredRow(row);
+                              }
+                            }}
+                          >
+                            <CardActionArea sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {logoUrl ? (
+                                <img src={logoUrl} alt={name || 'Logo'} style={{ maxWidth: '100%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <Typography variant="caption" color="textSecondary" sx={{ px: 1, textAlign: 'center' }}>{name || 'No logo'}</Typography>
+                              )}
+                            </CardActionArea>
+                          </Card>
+                        </Box>
+                      </Tooltip>
                     </Box>
-                  </Tooltip>
+                  );
+                })}
                 </Box>
-              );
-            })}
-            </Box>
-          </Box>
-          <Box sx={{ mt: 1 }}>
-            <TablePagination
-              component="div"
-              count={sortedAndFilteredRows.length}
-              page={page}
-              onPageChange={(_, newPage) => setPage(newPage)}
-              rowsPerPage={rowsPerPage}
-              rowsPerPageOptions={[rowsPerPage]}
-            />
-          </Box>
+              </Box>
+              <Box sx={{ mt: 1 }}>
+                <TablePagination
+                  component="div"
+                  count={sortedAndFilteredRows.length}
+                  page={page}
+                  onPageChange={(_, newPage) => setPage(newPage)}
+                  rowsPerPage={rowsPerPage}
+                  rowsPerPageOptions={[rowsPerPage]}
+                />
+              </Box>
+            </>
+          )}
+
+          {currentTab === 2 && ( // Comparison tab
+            <>
+              {/* Instructions */}
+              <Paper elevation={0} sx={{ mb: 2, p: 2, borderRadius: 1.5, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)' }}>
+                <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                  💡 Click on company logos below to add them to the comparison table. Selected companies are saved automatically. (Maximum 6 companies)
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="body2" sx={{ 
+                    color: selectedCompanies.length >= 6 ? 'error.main' : 'text.secondary',
+                    fontWeight: selectedCompanies.length >= 6 ? 600 : 'normal'
+                  }}>
+                    Selected: {selectedCompanies.length}/6 companies
+                  </Typography>
+                  {selectedCompanies.length >= 6 && (
+                    <Typography variant="body2" sx={{ color: 'error.main', fontSize: '0.85rem' }}>
+                      ⚠️ Maximum limit reached
+                    </Typography>
+                  )}
+                  {selectedCompanies.length > 0 && (
+                    <Button size="small" onClick={clearSelection} startIcon={<ClearIcon />}>
+                      Clear All
+                    </Button>
+                  )}
+                </Box>
+              </Paper>
+
+              {/* Comparison Table */}
+              {selectedCompanies.length > 0 && (
+                <Paper elevation={0} sx={{ mb: 2, borderRadius: 1.5, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)' }}>
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #e0e0e0', textAlign: 'center' }}>Metric</TableCell>
+                          {selectedCompanies.map((company, index) => {
+                            // Find company data to get logo
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              const name = nameIdx !== -1 ? (row[nameIdx] || '').toString() : '';
+                              return name === company;
+                            });
+                            const logoIdx = headers.findIndex(h => h.toLowerCase() === 'logo');
+                            const logoUrl = companyRow && logoIdx !== -1 ? companyRow[logoIdx] : '';
+                            
+                            return (
+                              <TableCell key={index} sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #e0e0e0', minWidth: 150, textAlign: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
+                                    {logoUrl ? (
+                                      <img 
+                                        src={logoUrl} 
+                                        alt={company} 
+                                        style={{ 
+                                          width: 24, 
+                                          height: 24, 
+                                          objectFit: 'contain',
+                                          marginRight: 4
+                                        }} 
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                                      />
+                                    ) : null}
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'black', fontSize: '0.875rem' }}>
+                                      {company}
+                                    </Typography>
+                                  </Box>
+                                  <IconButton size="small" onClick={() => toggleCompanySelection(company)} sx={{ p: 0.5, ml: 1 }}>
+                                    <ClearIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Country</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            const countryIdx = headers.findIndex(h => h.toLowerCase() === 'country');
+                            const country = companyRow && countryIdx !== -1 ? companyRow[countryIdx] : '-';
+                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{country || '-'}</TableCell>;
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Number of Employees</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            const employeesIdx = headers.findIndex(h => h.toLowerCase() === 'number of employees');
+                            const employees = companyRow && employeesIdx !== -1 ? companyRow[employeesIdx] : '-';
+                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{employees || '-'}</TableCell>;
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Founded Year</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            const foundedIdx = headers.findIndex(h => h.toLowerCase() === 'founded year');
+                            const founded = companyRow && foundedIdx !== -1 ? companyRow[foundedIdx] : '-';
+                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{founded || '-'}</TableCell>;
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Revenue</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            const revenueIdx = headers.findIndex(h => h.toLowerCase() === 'revenue range');
+                            const revenue = companyRow && revenueIdx !== -1 ? companyRow[revenueIdx] : '-';
+                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{revenue || '-'}</TableCell>;
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Sub-Industry</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            
+                            // Try different variations of sub-industry column names
+                            // First try exact match with the column name from the sheet
+                            const subIndustryVariations = [
+                              'Sub-industry',  // Exact match from your sheet
+                              ...headers.filter(h => 
+                                h.toLowerCase().includes('sub') && 
+                                h.toLowerCase().includes('industry')
+                              ),
+                              'sub-industry', 
+                              'sub_industry', 
+                              'subindustry', 
+                              'sub industry'
+                            ];
+                            let subIndustry = '';
+                            
+                            for (const variation of subIndustryVariations) {
+                              const idx = headers.findIndex(h => h.toLowerCase() === variation.toLowerCase());
+                              if (idx !== -1 && companyRow && companyRow[idx]) {
+                                subIndustry = companyRow[idx];
+                                break;
+                              }
+                            }
+                            
+                            // Format sub-industry data
+                            let displayText = '-';
+                            if (typeof subIndustry === 'object' && subIndustry) {
+                              displayText = subIndustry['sub-industry'] || subIndustry['sub_industry'] || subIndustry['subIndustry'] || '-';
+                            } else if (typeof subIndustry === 'string') {
+                              displayText = subIndustry.trim() || '-';
+                            }
+                            
+                            return (
+                              <TableCell key={`${company}-subindustry`} sx={{ textAlign: 'center' }}>
+                                {displayText}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Activity</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            
+                            // Try different variations of activity column names
+                            const activityIdx = headers.findIndex(h => h.toLowerCase() === 'activity');
+                            const activity = companyRow && activityIdx !== -1 ? companyRow[activityIdx] : '';
+                            
+                            // Format activity data
+                            let displayText = '-';
+                            if (typeof activity === 'object' && activity) {
+                              displayText = activity.activity || activity['Activity'] || '-';
+                            } else if (typeof activity === 'string') {
+                              displayText = activity.trim() || '-';
+                            }
+                            
+                            return (
+                              <TableCell key={`${company}-activity`} sx={{ textAlign: 'center' }}>
+                                {displayText}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Links</TableCell>
+                          {selectedCompanies.map((company) => {
+                            const companyRow = paginatedRows.find(row => {
+                              const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                              return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
+                            });
+                            
+                            const websiteIdx = headers.findIndex(h => h.toLowerCase() === 'website');
+                            const linkedinIdx = headers.findIndex(h => h.toLowerCase() === 'linkedin');
+                            
+                            const website = companyRow && websiteIdx !== -1 ? companyRow[websiteIdx] : null;
+                            const linkedin = companyRow && linkedinIdx !== -1 ? companyRow[linkedinIdx] : null;
+                            
+                            return (
+                              <TableCell key={company} sx={{ textAlign: 'center' }}>
+                                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                  {website ? (
+                                    <Link href={website.toString().startsWith('http') ? website.toString() : `https://${website}`} target="_blank" rel="noopener noreferrer">
+                                      <LanguageIcon fontSize="small" color="primary" />
+                                    </Link>
+                                  ) : null}
+                                  {linkedin ? (
+                                    <Link href={linkedin.toString().startsWith('http') ? linkedin.toString() : `https://${linkedin}`} target="_blank" rel="noopener noreferrer">
+                                      <LinkedInIcon fontSize="small" color="primary" />
+                                    </Link>
+                                  ) : null}
+                                  {!website && !linkedin ? '-' : null}
+                                </Box>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
+
+              {/* Company Logo Grid for Selection */}
+              <Box sx={{ mt: 1, height: 'calc(100vh - 400px)', overflowY: 'auto', pr: 1, pb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  Select Companies to Compare
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {paginatedRows.map((row, rowIndex) => {
+                  const logoIdxGrid = headers.findIndex(h => h.toLowerCase() === 'logo');
+                  const nameIdxGrid = headers.findIndex(h => h.toLowerCase() === 'company name');
+                  const logoUrl = logoIdxGrid !== -1 ? row[logoIdxGrid] : '';
+                  const name = nameIdxGrid !== -1 ? (row[nameIdxGrid] || '').toString() : '';
+                  const isSelected = selectedCompanies.includes(name);
+                  
+                  const isMaxReached = selectedCompanies.length >= 6 && !isSelected;
+                  
+                  return (
+                    <Box sx={{ flex: '0 0 auto' }} key={`comparison-${rowIndex}`}>
+                      <Tooltip title={isMaxReached ? 'Maximum 6 companies limit reached' : (name || 'Company name')} arrow>
+                        <Box sx={{ position: 'relative' }}>
+                          <Card 
+                            elevation={isSelected ? 3 : (isMaxReached ? 0 : 1)} 
+                            sx={{ 
+                              borderRadius: 2,
+                              width: 48,
+                              height: 48, 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              p: 0.25, 
+                              transition: 'transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                              backgroundColor: isSelected ? 'rgba(25, 118, 210, 0.08)' : (isMaxReached ? 'rgba(0,0,0,0.04)' : 'white'),
+                              border: isSelected ? '2px solid' : 'none',
+                              borderColor: isSelected ? 'primary.main' : 'transparent',
+                              opacity: isMaxReached ? 0.5 : 1,
+                              '&:hover': isMaxReached ? {} : { 
+                                transform: 'translateY(-2px)', 
+                                boxShadow: 3,
+                                cursor: 'pointer'
+                              }
+                            }}
+                            onClick={() => !isMaxReached && toggleCompanySelection(name)}
+                          >
+                            <CardActionArea sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {logoUrl ? (
+                                <img src={logoUrl} alt={name || 'Logo'} style={{ maxWidth: '100%', maxHeight: '80%', objectFit: 'contain' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <Typography variant="caption" color="textSecondary" sx={{ px: 1, textAlign: 'center' }}>{name || 'No logo'}</Typography>
+                              )}
+                            </CardActionArea>
+                          </Card>
+                          {isSelected && (
+                            <Box sx={{ 
+                              position: 'absolute', 
+                              top: -8, 
+                              right: -8, 
+                              backgroundColor: 'primary.main', 
+                              borderRadius: '50%', 
+                              width: 20, 
+                              height: 20, 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center' 
+                            }}>
+                              <CheckIcon sx={{ fontSize: 12, color: 'white' }} />
+                            </Box>
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  );
+                })}
+                </Box>
+              </Box>
+            </>
+          )}
         </>
       )}
     </Box>
