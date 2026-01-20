@@ -1307,7 +1307,7 @@ const CompanyDirectory: React.FC = () => {
               {/* Instructions */}
               <Paper elevation={0} sx={{ mb: 2, p: 2, borderRadius: 1.5, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)' }}>
                 <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-                  💡 Click on company logos below to add them to the comparison table. Selected companies are saved automatically. (Maximum 6 companies)
+                  💡 Select up to 6 company logos below to build your comparison. Your selections are saved automatically.
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography variant="body2" sx={{ 
@@ -1331,15 +1331,15 @@ const CompanyDirectory: React.FC = () => {
 
               {/* Comparison Table */}
               {selectedCompanies.length > 0 && (
-                <Paper elevation={0} sx={{ mb: 2, borderRadius: 1.5, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)' }}>
+                <Paper elevation={0} sx={{ mb: 2, borderRadius: 1.5, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)', width: '100%', overflow: 'hidden' }}>
                   <TableContainer>
-                    <Table>
+                    <Table sx={{ tableLayout: 'fixed' }}>
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #e0e0e0', textAlign: 'center' }}>Metric</TableCell>
+                          <TableCell sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #212121', textAlign: 'center', width: '200px' }}>Metric</TableCell>
                           {selectedCompanies.map((company, index) => {
-                            // Find company data to get logo
-                            const companyRow = paginatedRows.find(row => {
+                            // Find company data to get logo - use full rows array instead of paginatedRows
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               const name = nameIdx !== -1 ? (row[nameIdx] || '').toString() : '';
                               return name === company;
@@ -1348,7 +1348,7 @@ const CompanyDirectory: React.FC = () => {
                             const logoUrl = companyRow && logoIdx !== -1 ? companyRow[logoIdx] : '';
                             
                             return (
-                              <TableCell key={index} sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #e0e0e0', minWidth: 150, textAlign: 'center' }}>
+<TableCell key={index} sx={{ fontWeight: 600, backgroundColor: 'white', color: 'black', borderBottom: '2px solid #212121', width: `${100 / (selectedCompanies.length + 1)}%`, textAlign: 'center', px: 1, whiteSpace: 'normal', wordWrap: 'break-word' }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
                                     {logoUrl ? (
@@ -1364,7 +1364,7 @@ const CompanyDirectory: React.FC = () => {
                                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
                                       />
                                     ) : null}
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'black', fontSize: '0.875rem' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'black', fontSize: '0.875rem', whiteSpace: 'normal', wordWrap: 'break-word' }}>
                                       {company}
                                     </Typography>
                                   </Box>
@@ -1381,19 +1381,19 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Country</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
                             const countryIdx = headers.findIndex(h => h.toLowerCase() === 'country');
                             const country = companyRow && countryIdx !== -1 ? companyRow[countryIdx] : '-';
-                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{country || '-'}</TableCell>;
+                            return <TableCell key={company} sx={{ textAlign: 'center', width: `${100 / (selectedCompanies.length + 1)}%`, px: 1, whiteSpace: 'normal', wordWrap: 'break-word', '& .MuiTypography-root': { whiteSpace: 'normal' } }}>{country || '-'}</TableCell>;
                           })}
                         </TableRow>
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Number of Employees</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
@@ -1405,7 +1405,7 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Founded Year</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
@@ -1417,7 +1417,7 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Revenue</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
@@ -1429,7 +1429,7 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Sub-Industry</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
@@ -1475,7 +1475,7 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Activity</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
@@ -1493,7 +1493,17 @@ const CompanyDirectory: React.FC = () => {
                             }
                             
                             return (
-                              <TableCell key={`${company}-activity`} sx={{ textAlign: 'center' }}>
+                              <TableCell key={`${company}-activity`} sx={{ 
+                                textAlign: 'center', 
+                                whiteSpace: 'normal', 
+                                wordWrap: 'break-word',
+                                maxWidth: '200px',
+                                px: 2,
+                                '& .MuiTypography-root': { 
+                                  whiteSpace: 'normal',
+                                  wordBreak: 'break-word'
+                                } 
+                              }}>
                                 {displayText}
                               </TableCell>
                             );
@@ -1502,7 +1512,7 @@ const CompanyDirectory: React.FC = () => {
                         <TableRow>
                           <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Links</TableCell>
                           {selectedCompanies.map((company) => {
-                            const companyRow = paginatedRows.find(row => {
+                            const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
