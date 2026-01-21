@@ -50,6 +50,7 @@ import BalanceIcon from '@mui/icons-material/Balance';
 import ClearIcon from '@mui/icons-material/Clear';
 import AddIcon from '@mui/icons-material/Add';
 import { fetchDataFromSheet } from '../../services/googleSheets';
+import Statistics from '../Statistics';
 import { useTheme, useMediaQuery } from '@mui/material';
 
 // Feature flags
@@ -153,6 +154,7 @@ const CompanyDirectory: React.FC = () => {
   const [sortMenuAnchor, setSortMenuAnchor] = useState<null | HTMLElement>(null);
   const [filters, setFilters] = useState<{
     country: string[];
+    region: string[];
     employees: string[];
     foundedYear: string[];
     revenueRange: string[];
@@ -162,6 +164,7 @@ const CompanyDirectory: React.FC = () => {
     activity: string[];
   }>({
     country: [],
+    region: [],
     employees: [],
     foundedYear: [],
     revenueRange: [],
@@ -237,6 +240,7 @@ const CompanyDirectory: React.FC = () => {
     headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
 
   const countryIdx = columnIndex('country');
+  const regionIdx = columnIndex('region');
   const employeesIdx = columnIndex('number of employees');
   const foundedIdx = columnIndex('founded year');
   const industryIdx = columnIndex('industry');
@@ -301,8 +305,17 @@ const CompanyDirectory: React.FC = () => {
             .filter((country: any) => country && country.toString().trim())
             .map((country: any) => country.toString().trim())
         )).sort((a, b) => a.localeCompare(b));
+
+    const regionOptions = regionIdx === -1
+      ? []
+      : Array.from(new Set(
+          rows.map(r => r[regionIdx])
+            .filter((region: any) => region && region.toString().trim())
+            .map((region: any) => region.toString().trim())
+        )).sort((a, b) => a.localeCompare(b));
     return {
       country: countryOptions,
+      region: regionOptions,
       // Keep employees in predefined ascending order only
       employees: employeeRangeOptions,
       foundedYear: unique(foundedIdx, foundedYearOptions),
@@ -313,7 +326,7 @@ const CompanyDirectory: React.FC = () => {
       subIndustry: subIndustryOptions,
       activity: activityOptions
     };
-  }, [rows, filters.country, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
+  }, [rows, filters.country, filters.region, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
 
   const filteredByFilters = React.useMemo(() => {
     return rows.filter(row => {
@@ -336,6 +349,7 @@ const CompanyDirectory: React.FC = () => {
 
       return (
         match(countryIdx, filters.country) &&
+        match(regionIdx, filters.region) &&
         (() => {
           if (locationIdx === -1) return true;
           const raw = row[locationIdx];
@@ -386,7 +400,7 @@ const CompanyDirectory: React.FC = () => {
         match(revenueIdx, filters.revenueRange)
       );
     });
-  }, [rows, filters, countryIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx]);
+  }, [rows, filters, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx]);
 
   const searchFilteredRows = filteredByFilters.filter(row =>
     row.some(
@@ -774,7 +788,8 @@ const CompanyDirectory: React.FC = () => {
   // No augmented headers needed for card grid view
 
   return (
-  <Box>
+    <>
+    <Box>
     {/* Brand and Search Bar */}
     <Box sx={{ mb: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1, pb: 2, borderBottom: '1px solid rgba(0,0,0,0.12)' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -895,8 +910,8 @@ const CompanyDirectory: React.FC = () => {
       {/* Content goes here */}
       </Box>
 
-      {/* Dashboard showing hovered company details - Hidden in comparison tab */}
-      {currentTab !== 2 && (
+      {/* Dashboard showing hovered company details - Hidden in comparison and statistics tabs */}
+      {currentTab !== 2 && currentTab !== 3 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 10 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -1137,8 +1152,9 @@ const CompanyDirectory: React.FC = () => {
       </Paper>
       )}
 
-      {/* Our coverage stats card */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
+      {/* Our coverage stats card - Hidden only in Statistics tab */}
+      {currentTab !== 3 && (
+        <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
         <Paper 
           elevation={0} 
           sx={{ 
@@ -1217,6 +1233,8 @@ const CompanyDirectory: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+        </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -1427,49 +1445,15 @@ const CompanyDirectory: React.FC = () => {
                           })}
                         </TableRow>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Sub-Industry</TableCell>
+                          <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>Bizgrid Score</TableCell>
                           {selectedCompanies.map((company) => {
                             const companyRow = rows.find(row => {
                               const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
                               return nameIdx !== -1 && (row[nameIdx] || '').toString() === company;
                             });
-                            
-                            // Try different variations of sub-industry column names
-                            // First try exact match with the column name from the sheet
-                            const subIndustryVariations = [
-                              'Sub-industry',  // Exact match from your sheet
-                              ...headers.filter(h => 
-                                h.toLowerCase().includes('sub') && 
-                                h.toLowerCase().includes('industry')
-                              ),
-                              'sub-industry', 
-                              'sub_industry', 
-                              'subindustry', 
-                              'sub industry'
-                            ];
-                            let subIndustry = '';
-                            
-                            for (const variation of subIndustryVariations) {
-                              const idx = headers.findIndex(h => h.toLowerCase() === variation.toLowerCase());
-                              if (idx !== -1 && companyRow && companyRow[idx]) {
-                                subIndustry = companyRow[idx];
-                                break;
-                              }
-                            }
-                            
-                            // Format sub-industry data
-                            let displayText = '-';
-                            if (typeof subIndustry === 'object' && subIndustry) {
-                              displayText = subIndustry['sub-industry'] || subIndustry['sub_industry'] || subIndustry['subIndustry'] || '-';
-                            } else if (typeof subIndustry === 'string') {
-                              displayText = subIndustry.trim() || '-';
-                            }
-                            
-                            return (
-                              <TableCell key={`${company}-subindustry`} sx={{ textAlign: 'center' }}>
-                                {displayText}
-                              </TableCell>
-                            );
+                            const bizgridIdx = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+                            const bizgridScore = companyRow && bizgridIdx !== -1 ? companyRow[bizgridIdx] : '-';
+                            return <TableCell key={company} sx={{ textAlign: 'center' }}>{bizgridScore || '-'}</TableCell>;
                           })}
                         </TableRow>
                         <TableRow>
@@ -1483,6 +1467,34 @@ const CompanyDirectory: React.FC = () => {
                             // Try different variations of activity column names
                             const activityIdx = headers.findIndex(h => h.toLowerCase() === 'activity');
                             const activity = companyRow && activityIdx !== -1 ? companyRow[activityIdx] : '';
+                            
+                            // Get sector and industry data for tooltip
+                            const sectorIdx = headers.findIndex(h => h.toLowerCase() === 'sector');
+                            const industryIdx = headers.findIndex(h => h.toLowerCase() === 'industry');
+                            const sector = companyRow && sectorIdx !== -1 ? companyRow[sectorIdx] : '';
+                            const industryData = companyRow && industryIdx !== -1 ? companyRow[industryIdx] : '';
+                            
+                            // Extract sector and industry from data
+                            let sectorText = '';
+                            let industryText = '';
+                            let subIndustryText = '';
+                            
+                            if (typeof sector === 'object' && sector) {
+                              sectorText = sector.sector || sector['Sector'] || '';
+                            } else if (typeof sector === 'string') {
+                              sectorText = sector.trim();
+                            }
+                            
+                            if (typeof industryData === 'object' && industryData) {
+                              industryText = industryData.industry || industryData['Industry'] || '';
+                              subIndustryText = industryData.subIndustry || industryData['subIndustry'] || '';
+                            } else if (typeof industryData === 'string') {
+                              industryText = industryData.trim();
+                            }
+                            
+                            // Create the full chain for tooltip
+                            const chainParts = [sectorText, industryText, subIndustryText, activity.toString().trim()].filter(part => part && part !== '-');
+                            const fullChain = chainParts.join(' > ');
                             
                             // Format activity data
                             let displayText = '-';
@@ -1504,7 +1516,11 @@ const CompanyDirectory: React.FC = () => {
                                   wordBreak: 'break-word'
                                 } 
                               }}>
-                                {displayText}
+                                <Tooltip title={fullChain || displayText} arrow>
+                                  <Box>
+                                    {displayText}
+                                  </Box>
+                                </Tooltip>
                               </TableCell>
                             );
                           })}
@@ -1623,14 +1639,48 @@ const CompanyDirectory: React.FC = () => {
               </Box>
             </>
           )}
+
+          {currentTab === 3 && ( // Statistics tab
+            <Statistics />
+          )}
         </>
       )}
-    </Box>
 
       <Dialog open={filterOpen} onClose={() => setFilterOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Filters</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ pt: 1 }}>
+            <Autocomplete
+              multiple
+              options={filterOptions.region}
+              value={filters.region}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, region: value }))}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip label={option} {...getTagProps({ index })} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Region"
+                  placeholder="Search region"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                    },
+                  }}
+                />
+              )}
+            />
             <Autocomplete
               multiple
               options={filterOptions.country}
@@ -1642,7 +1692,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Country" placeholder="Search country" />
+                <TextField
+                  {...params}
+                  label="Country"
+                  placeholder="Search country"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#2196f3',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1656,7 +1723,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Sector" placeholder="Search sector" />
+                <TextField
+                  {...params}
+                  label="Sector"
+                  placeholder="Search sector"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1670,7 +1754,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Industry" placeholder="Search industry" />
+                <TextField
+                  {...params}
+                  label="Industry"
+                  placeholder="Search industry"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1684,7 +1785,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Sub-industry" placeholder="Search sub-industry" />
+                <TextField
+                  {...params}
+                  label="Sub-industry"
+                  placeholder="Search sub-industry"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1698,7 +1816,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Activity" placeholder="Search activities" />
+                <TextField
+                  {...params}
+                  label="Activity"
+                  placeholder="Search activities"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#ff9800',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1712,7 +1847,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Number of employees" placeholder="Search" />
+                <TextField
+                  {...params}
+                  label="Number of employees"
+                  placeholder="Search"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1726,7 +1878,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Founded year" placeholder="Search" />
+                <TextField
+                  {...params}
+                  label="Founded year"
+                  placeholder="Search"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                    },
+                  }}
+                />
               )}
             />
             <Autocomplete
@@ -1740,7 +1909,24 @@ const CompanyDirectory: React.FC = () => {
                 ))
               }
               renderInput={(params) => (
-                <TextField {...params} label="Revenue range" placeholder="Search" />
+                <TextField
+                  {...params}
+                  label="Revenue range"
+                  placeholder="Search"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                    },
+                  }}
+                />
               )}
             />
           </Stack>
@@ -1750,6 +1936,7 @@ const CompanyDirectory: React.FC = () => {
             onClick={() =>
               setFilters({ 
                 country: [], 
+                region: [],
                 employees: [], 
                 foundedYear: [], 
                 revenueRange: [], 
@@ -1879,6 +2066,7 @@ const CompanyDirectory: React.FC = () => {
         </MenuItem>
       </Menu>
     </Box>
+    </>
   );
 };
 
