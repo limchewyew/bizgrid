@@ -14,6 +14,11 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  TableSortLabel,
 } from '@mui/material';
 import {
   BarChart,
@@ -33,11 +38,25 @@ interface ChartData {
   count: number;
 }
 
+interface TableData {
+  rank: number;
+  country: string;
+  numberOfCompanies: number;
+}
+
+type SortField = 'rank' | 'country' | 'numberOfCompanies';
+type GroupByField = 'country' | 'region' | 'sector' | 'employees' | 'foundedYear' | 'revenueRange';
+type SortOrder = 'asc' | 'desc';
+
 const Statistics: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]); // Add headers state
+  const [columnMap, setColumnMap] = useState<{ [key: string]: number }>({}); // Add column map state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('rank');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [groupByField, setGroupByField] = useState<GroupByField>('country');
   const [filters, setFilters] = useState<{
     region: string[];
     country: string[];
@@ -63,6 +82,7 @@ const Statistics: React.FC = () => {
         console.log('Headers:', sheetData.headers);
         
         setHeaders(sheetData.headers); // Set headers
+        setColumnMap(sheetData.columnMap || {}); // Set column map
         setData(sheetData.rows);
         setLoading(false);
       } catch (err) {
@@ -77,16 +97,8 @@ const Statistics: React.FC = () => {
   // Get filter options based on data
   const filterOptions = React.useMemo(() => {
     const columnIndex = (name: string) => {
-      // Find column index based on common column names
-      const columnMapping: Record<string, number> = {
-        'country': 3,  // Column D - Country data
-        'region': 4,   // Column E - Region data  
-        'sector': 11,  // Column L - Trying column 11 for Sector data
-        'number of employees': 8,  // Column I - Employee data
-        'founded year': 7,  // Column H - Founded year data
-        'revenue range': 10,   // Column K - Revenue data (FIXED)
-      };
-      return columnMapping[name.toLowerCase()] || -1;
+      // Use dynamic column finding like Company Directory
+      return headers.findIndex(h => h.toLowerCase() === name);
     };
 
     const unique = (idx: number, predefinedOptions?: string[]) => {
@@ -133,7 +145,7 @@ const Statistics: React.FC = () => {
       foundedYear: [], // Will use predefined eras
       revenueRange: revenueRangeOptions,
     };
-  }, [data]);
+  }, [data, headers]);
 
   const handleFilterChange = (filterType: string, values: string[]) => {
     setFilters(prev => ({
@@ -168,15 +180,8 @@ const Statistics: React.FC = () => {
       };
 
       const columnIndex = (name: string) => {
-        const columnMapping: Record<string, number> = {
-          'country': 3,  // Column D - Country data
-          'region': 4,   // Column E - Region data  
-          'sector': 11,  // Column L - Trying column 11 for Sector data
-          'number of employees': 8,  // Column I - Employee data
-          'founded year': 7,  // Column H - Founded year data
-          'revenue range': 10,   // Column K - Revenue data (FIXED)
-        };
-        return columnMapping[name.toLowerCase()] || -1;
+        // Use dynamic column finding like Company Directory
+        return headers.findIndex(h => h.toLowerCase() === name);
       };
 
       // Founded year special handling
@@ -233,8 +238,9 @@ const Statistics: React.FC = () => {
     const countryCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      // Use column D (index 3) for Country data
-      let country = row[3] || 'Unknown';
+      // Use dynamic column finding
+      const countryIdx = headers.findIndex(h => h.toLowerCase() === 'country');
+      let country = countryIdx !== -1 ? (row[countryIdx] || 'Unknown') : 'Unknown';
       
       countryCount[country] = (countryCount[country] || 0) + 1;
     });
@@ -244,47 +250,95 @@ const Statistics: React.FC = () => {
       .sort((a, b) => b.count - a.count); // Remove slice(0, 10) to show all
   };
 
-  // Process countries data for table with ranking
-  const processCountriesTableData = () => {
-    console.log('processCountriesTableData called');
+  // Process data for table based on selected grouping field
+  const processTableData = (): TableData[] => {
+    console.log('processTableData called with groupByField:', groupByField);
     console.log('filters.foundedYear:', filters.foundedYear);
     console.log('filteredData length:', filteredData.length);
     console.log('original data length:', data.length);
     
-    const countryCount: { [key: string]: number } = {};
+    const itemCount: { [key: string]: number } = {};
+    
+    // Get column index for the selected grouping field
+    const getColumnIndex = (field: GroupByField): number => {
+      // Use dynamic column finding like Company Directory
+      const fieldNameMap: Record<GroupByField, string> = {
+        'country': 'country',
+        'region': 'region',
+        'sector': 'sector',
+        'employees': 'number of employees',
+        'foundedYear': 'founded year',
+        'revenueRange': 'revenue range'
+      };
+      
+      const headerName = fieldNameMap[field];
+      return headers.findIndex(h => h.toLowerCase() === headerName);
+    };
+    
+    const colIndex = getColumnIndex(groupByField);
     
     filteredData.forEach((row, index) => {
       // Debug first few rows to understand the data structure
       if (index < 5) {
         console.log(`Row ${index} full data:`, row);
-        console.log(`Row ${index} country data:`, row[4], 'Type:', typeof row[4]);
+        console.log(`Row ${index} ${groupByField} data:`, row[colIndex], 'Type:', typeof row[colIndex]);
       }
       
-      // Use column index 4 for Country data (after transformation: 0=Row Number, 1=Logo, 2=Company Name, 3=Location, 4=Country)
-      const countryData = row[4];
-      let countryName = 'Unknown';
+      const itemData = row[colIndex];
+      let itemName = 'Unknown';
       
-      if (countryData) {
-        if (typeof countryData === 'string') {
-          countryName = countryData.trim();
-        } else if (typeof countryData === 'object' && countryData !== null) {
+      if (itemData) {
+        if (typeof itemData === 'string') {
+          itemName = itemData.trim();
+        } else if (typeof itemData === 'object' && itemData !== null) {
           // If it's an object, try to get a string representation
-          countryName = countryData.toString();
+          itemName = itemData.toString();
           // If toString() returns [object Object], try accessing common properties
-          if (countryName === '[object Object]') {
-            countryName = countryData.value || countryData.name || countryData.label || JSON.stringify(countryData);
+          if (itemName === '[object Object]') {
+            itemName = itemData.value || itemData.name || itemData.label || JSON.stringify(itemData);
           }
         } else {
-          countryName = String(countryData);
+          itemName = String(itemData);
         }
       }
       
-      countryCount[countryName] = (countryCount[countryName] || 0) + 1;
+      // Special handling for founded year to convert to eras
+      if (groupByField === 'foundedYear' && itemName !== 'Unknown') {
+        const yearNum = parseInt(itemName);
+        if (!isNaN(yearNum)) {
+          if (yearNum < 1950) {
+            itemName = 'Pre-1950';
+          } else if (yearNum >= 1950 && yearNum <= 1979) {
+            itemName = '1950-1979';
+          } else if (yearNum >= 1980 && yearNum <= 1989) {
+            itemName = '1980-1989';
+          } else if (yearNum >= 1990 && yearNum <= 1999) {
+            itemName = '1990-1999';
+          } else if (yearNum >= 2000 && yearNum <= 2009) {
+            itemName = '2000-2009';
+          } else if (yearNum >= 2010 && yearNum <= 2014) {
+            itemName = '2010-2014';
+          } else if (yearNum >= 2015 && yearNum <= 2019) {
+            itemName = '2015-2019';
+          } else if (yearNum >= 2020) {
+            itemName = '2020-present';
+          }
+        }
+      }
+      
+      // Only count if it's valid data
+      if (itemName && itemName !== 'Unknown' && itemName !== '') {
+        // For country grouping, exclude regions
+        if (groupByField === 'country' && isRegion(itemName)) {
+          return;
+        }
+        itemCount[itemName] = (itemCount[itemName] || 0) + 1;
+      }
     });
 
-    console.log('countryCount:', countryCount);
+    console.log('itemCount:', itemCount);
 
-    return Object.entries(countryCount)
+    return Object.entries(itemCount)
       .map(([name, count]) => ({ 
         rank: 0, // Will be set after sorting
         country: name, 
@@ -294,11 +348,27 @@ const Statistics: React.FC = () => {
       .map((item, index) => ({ ...item, rank: index + 1 }));
   };
 
+  // Helper function to identify if a value is a region
+  const isRegion = (value: string): boolean => {
+    const regions = [
+      'North America', 'South America', 'Europe', 'Asia', 'Africa', 'Oceania', 
+      'Middle East', 'Central America', 'Caribbean', 'Southeast Asia',
+      'Eastern Europe', 'Western Europe', 'Northern Europe', 'Southern Europe',
+      'East Asia', 'South Asia', 'West Asia', 'Central Asia',
+      'North Africa', 'West Africa', 'East Africa', 'Southern Africa', 'Central Africa',
+      'Pacific Islands',
+      '#N/A', 'Unknown', ''
+    ];
+    return regions.includes(value);
+  };
+
   const processCountryData = (): ChartData[] => {
     const countryCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      const country = row[3] || 'Unknown'; // Country column index - Column D
+      // Use dynamic column finding
+      const countryIdx = headers.findIndex(h => h.toLowerCase() === 'country');
+      let country = countryIdx !== -1 ? (row[countryIdx] || 'Unknown') : 'Unknown';
       countryCount[country] = (countryCount[country] || 0) + 1;
     });
 
@@ -312,7 +382,9 @@ const Statistics: React.FC = () => {
     const sectorCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      const sector = row[11] || 'Unknown'; // Sector column index - Column L (Trying column 11)
+      // Use dynamic column finding
+      const sectorIdx = headers.findIndex(h => h.toLowerCase() === 'sector');
+      let sector = sectorIdx !== -1 ? (row[sectorIdx] || 'Unknown') : 'Unknown';
       sectorCount[sector] = (sectorCount[sector] || 0) + 1;
     });
 
@@ -366,7 +438,9 @@ const Statistics: React.FC = () => {
     const revenueCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      const revenue = row[10] || 'Unknown'; // Revenue range column index - Column K (FIXED)
+      // Use dynamic column finding
+      const revenueIdx = headers.findIndex(h => h.toLowerCase() === 'revenue range');
+      let revenue = revenueIdx !== -1 ? (row[revenueIdx] || 'Unknown') : 'Unknown';
       revenueCount[revenue] = (revenueCount[revenue] || 0) + 1;
     });
 
@@ -407,7 +481,9 @@ const Statistics: React.FC = () => {
     const employeeCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      const employees = row[8] || 'Unknown'; // Number of employees column index
+      // Use dynamic column finding
+      const employeeIdx = headers.findIndex(h => h.toLowerCase() === 'number of employees');
+      let employees = employeeIdx !== -1 ? (row[employeeIdx] || 'Unknown') : 'Unknown';
       employeeCount[employees] = (employeeCount[employees] || 0) + 1;
     });
 
@@ -449,7 +525,10 @@ const Statistics: React.FC = () => {
     const yearCount: { [key: string]: number } = {};
     
     filteredData.forEach(row => {
-      const year = row[7] || 'Unknown'; // Founded year column index
+      const foundedIdx = headers.findIndex(h => h.toLowerCase() === 'founded year');
+      if (foundedIdx === -1) return;
+      
+      const year = row[foundedIdx] || 'Unknown'; // Founded year column index
       if (year && year !== 'Unknown') {
         const yearNum = parseInt(year);
         let era = 'Unknown';
@@ -504,6 +583,69 @@ const Statistics: React.FC = () => {
     return orderedData;
   };
 
+  // Sort table data based on selected field and order
+  const sortedTableData = React.useMemo(() => {
+    const data = processTableData();
+    return [...data].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      switch (sortField) {
+        case 'rank':
+          aValue = a.rank;
+          bValue = b.rank;
+          break;
+        case 'country':
+          aValue = a.country.toLowerCase();
+          bValue = b.country.toLowerCase();
+          break;
+        case 'numberOfCompanies':
+          aValue = a.numberOfCompanies;
+          bValue = b.numberOfCompanies;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [processTableData, sortField, sortOrder]);
+
+  // Calculate total companies
+  const totalCompanies = React.useMemo(() => {
+    return processTableData().reduce((sum, item) => sum + item.numberOfCompanies, 0);
+  }, [processTableData]);
+
+  const handleSort = (field: SortField) => {
+    const isAsc = sortField === field && sortOrder === 'asc';
+    setSortOrder(isAsc ? 'desc' : 'asc');
+    setSortField(field);
+  };
+
+  const handleGroupByChange = (field: GroupByField) => {
+    setGroupByField(field);
+    // Reset sort to rank when changing grouping
+    setSortField('rank');
+    setSortOrder('asc');
+  };
+
+  // Get display name for grouping field
+  const getGroupByDisplayLabel = (field: GroupByField): string => {
+    const labels: Record<GroupByField, string> = {
+      'country': 'Country',
+      'region': 'Region',
+      'sector': 'Sector',
+      'employees': 'Number of Employees',
+      'foundedYear': 'Founded Year',
+      'revenueRange': 'Revenue Range'
+    };
+    return labels[field];
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -531,29 +673,73 @@ const Statistics: React.FC = () => {
         headers={headers}
       />
       
-      {/* Countries Ranking Table */}
+      {/* Master Table */}
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ pb: 2 }}>
-          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-            Master Table
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" fontWeight={600}>
+              Master Table
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Group By</InputLabel>
+              <Select
+                value={groupByField}
+                label="Group By"
+                onChange={(e) => handleGroupByChange(e.target.value as GroupByField)}
+              >
+                <MenuItem value="country">Country</MenuItem>
+                <MenuItem value="region">Region</MenuItem>
+                <MenuItem value="sector">Sector</MenuItem>
+                <MenuItem value="employees">Number of Employees</MenuItem>
+                <MenuItem value="foundedYear">Founded Year</MenuItem>
+                <MenuItem value="revenueRange">Revenue Range</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
           <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
-                    Rank
+                  <TableCell 
+                    sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSort('rank')}
+                  >
+                    <TableSortLabel
+                      active={sortField === 'rank'}
+                      direction={sortField === 'rank' ? sortOrder : 'asc'}
+                      sx={{ color: '#ffffff !important' }}
+                    >
+                      Rank
+                    </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
-                    Country
+                  <TableCell 
+                    sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSort('country')}
+                  >
+                    <TableSortLabel
+                      active={sortField === 'country'}
+                      direction={sortField === 'country' ? sortOrder : 'asc'}
+                      sx={{ color: '#ffffff !important' }}
+                    >
+                      {getGroupByDisplayLabel(groupByField)}
+                    </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
-                    Number of Companies
+                  <TableCell 
+                    sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center', cursor: 'pointer' }}
+                    onClick={() => handleSort('numberOfCompanies')}
+                  >
+                    <TableSortLabel
+                      active={sortField === 'numberOfCompanies'}
+                      direction={sortField === 'numberOfCompanies' ? sortOrder : 'asc'}
+                      sx={{ color: '#ffffff !important' }}
+                    >
+                      Number of Companies
+                    </TableSortLabel>
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {processCountriesTableData().map((row) => (
+                {sortedTableData.map((row) => (
                   <TableRow key={row.country} hover>
                     <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>
                       {row.rank}
@@ -566,6 +752,24 @@ const Statistics: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+                {/* Total Bar */}
+                <TableRow 
+                  sx={{ 
+                    backgroundColor: '#f5f5f5',
+                    fontWeight: 'bold',
+                    borderTop: '2px solid #001f3f'
+                  }}
+                >
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'center' }}>
+                    Total
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'center' }}>
+                    
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, textAlign: 'center' }}>
+                    {totalCompanies.toLocaleString()}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </TableContainer>

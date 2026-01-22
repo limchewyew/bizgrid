@@ -53,6 +53,7 @@ import CasinoIcon from '@mui/icons-material/Casino';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { fetchDataFromSheet } from '../../services/googleSheets';
 import Statistics from '../Statistics';
+import WorldMapPage from '../WorldMapPage';
 import { useTheme, useMediaQuery } from '@mui/material';
 
 // Feature flags
@@ -879,7 +880,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
-          disabled={currentTab === 3}
+          disabled={currentTab === 3 || currentTab === 4}
         >
           Filters
         </Button>
@@ -937,6 +938,7 @@ const CompanyDirectory: React.FC = () => {
         <Tab label="Competitors" />
         <Tab label="Comparison" />
         <Tab label="Statistics" />
+        <Tab label="World Map" />
       </Tabs>
     </Paper>
 
@@ -945,7 +947,7 @@ const CompanyDirectory: React.FC = () => {
       </Box>
 
       {/* Dashboard showing hovered company details - Hidden in comparison and statistics tabs */}
-      {currentTab !== 2 && currentTab !== 3 && (
+      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 10 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -1818,6 +1820,10 @@ const CompanyDirectory: React.FC = () => {
 
           {currentTab === 3 && ( // Statistics tab
             <Statistics />
+          )}
+
+          {currentTab === 4 && ( // World Map tab
+            <WorldMapPage />
           )}
         </>
       )}

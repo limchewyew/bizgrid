@@ -8,8 +8,6 @@ const SHEET_NAME = process.env.REACT_APP_SHEET_NAME || 'Sheet1';
 const ALLOWED_COLUMNS = [
   'Logo',
   'Company Name',
-  'City',
-  'State',
   'Country',
   'Region',
   'Description',
@@ -32,11 +30,10 @@ const ALLOWED_COLUMNS = [
   // Note: Primary Business intentionally removed per latest requirements
 ];
 
-// Define display columns (after combining City/State and Industry/Sub-Industry)
+// Define display columns (after combining Industry/Sub-Industry)
 const DISPLAY_COLUMNS = [
   'Logo',
   'Company Name',
-  'Location',
   'Country',
   'Region',
   'Description',
@@ -95,7 +92,7 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
     // Store row numbers (1-based index from the sheet, excluding header)
     const rowNumbers = Array.from({ length: rows.length - 1 }, (_, i) => i + 2);
     
-    // Transform data rows to combine City/State and Industry/Sub-Industry
+    // Transform data rows to combine Industry/Sub-Industry
     const dataRows = rows.slice(1).map((row: any[], index: number) => {
       const transformedRow: any[] = [];
       
@@ -103,12 +100,7 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
       transformedRow.push(rowNumbers[index]);
       
       DISPLAY_COLUMNS.forEach(displayCol => {
-        if (displayCol === 'Location') {
-          // Combine City and State
-          const city = columnMap['City'] !== undefined ? row[columnMap['City']] || '' : '';
-          const state = columnMap['State'] !== undefined ? row[columnMap['State']] || '' : '';
-          transformedRow.push({ city, state });
-        } else if (displayCol === 'Accolades') {
+        if (displayCol === 'Accolades') {
           // Read directly from the Accolades column
           const accolades = columnMap['Accolades'] !== undefined ? (row[columnMap['Accolades']] || '').toString() : '';
           transformedRow.push(accolades);
