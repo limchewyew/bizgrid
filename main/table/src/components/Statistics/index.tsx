@@ -26,6 +26,7 @@ import {
   Legend,
 } from 'recharts';
 import { fetchDataFromSheet } from '../../services/googleSheets';
+import StatisticsFilters from './StatisticsFilters';
 
 interface ChartData {
   name: string;
@@ -34,13 +35,34 @@ interface ChartData {
 
 const Statistics: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]); // Add headers state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<{
+    region: string[];
+    country: string[];
+    sector: string[];
+    employees: string[];
+    foundedYear: string[];
+    revenueRange: string[];
+  }>({
+    region: [],
+    country: [],
+    sector: [],
+    employees: [],
+    foundedYear: [],
+    revenueRange: [],
+  });
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const sheetData = await fetchDataFromSheet();
+        console.log('Loaded data:', sheetData);
+        console.log('Data rows length:', sheetData.rows.length);
+        console.log('Headers:', sheetData.headers);
+        
+        setHeaders(sheetData.headers); // Set headers
         setData(sheetData.rows);
         setLoading(false);
       } catch (err) {
@@ -52,29 +74,167 @@ const Statistics: React.FC = () => {
     loadData();
   }, []);
 
+  // Get filter options based on data
+  const filterOptions = React.useMemo(() => {
+    const columnIndex = (name: string) => {
+      // Find column index based on common column names
+      const columnMapping: Record<string, number> = {
+        'country': 3,  // Column D - Country data
+        'region': 4,   // Column E - Region data  
+        'sector': 11,  // Column L - Trying column 11 for Sector data
+        'number of employees': 8,  // Column I - Employee data
+        'founded year': 7,  // Column H - Founded year data
+        'revenue range': 10,   // Column K - Revenue data (FIXED)
+      };
+      return columnMapping[name.toLowerCase()] || -1;
+    };
+
+    const unique = (idx: number, predefinedOptions?: string[]) => {
+      if (idx === -1) return predefinedOptions || [];
+      return Array.from(
+        new Set([
+          ...(predefinedOptions || []),
+          ...data
+            .map(r => r[idx])
+            .filter(Boolean)
+            .map(v => v.toString().trim())
+        ])
+      ).sort((a, b) => a.localeCompare(b));
+    };
+
+    const employeeRangeOptions = [
+      '1-10',
+      '11-50',
+      '51-100',
+      '101-250',
+      '251-500',
+      '501-1000',
+      '1001-5000',
+      '5001-10000',
+      '10001+'
+    ];
+
+    const revenueRangeOptions = [
+      'Less than $1M',
+      '$1M to $10M',
+      '$10M to $50M',
+      '$50M to $100M',
+      '$100M to $500M',
+      '$500M to $1B',
+      '$1B to $10B',
+      '$10B+'
+    ];
+
+    return {
+      region: unique(columnIndex('region')),
+      country: unique(columnIndex('country')),
+      sector: unique(columnIndex('sector')),
+      employees: employeeRangeOptions,
+      foundedYear: [], // Will use predefined eras
+      revenueRange: revenueRangeOptions,
+    };
+  }, [data]);
+
+  const handleFilterChange = (filterType: string, values: string[]) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: values
+    }));
+  };
+
+  const handleClearAllFilters = () => {
+    setFilters({
+      region: [],
+      country: [],
+      sector: [],
+      employees: [],
+      foundedYear: [],
+      revenueRange: [],
+    });
+  };
+
+  // Filter data based on selected filters
+  const filteredData = React.useMemo(() => {
+    console.log('filteredData useMemo called');
+    console.log('Current filters:', filters);
+    console.log('Original data length:', data.length);
+    
+    const result = data.filter(row => {
+      const match = (idx: number, selected: string[]) => {
+        if (idx === -1 || selected.length === 0) return true;
+        const val = row[idx];
+        if (!val) return false;
+        return selected.includes(val.toString().trim());
+      };
+
+      const columnIndex = (name: string) => {
+        const columnMapping: Record<string, number> = {
+          'country': 3,  // Column D - Country data
+          'region': 4,   // Column E - Region data  
+          'sector': 11,  // Column L - Trying column 11 for Sector data
+          'number of employees': 8,  // Column I - Employee data
+          'founded year': 7,  // Column H - Founded year data
+          'revenue range': 10,   // Column K - Revenue data (FIXED)
+        };
+        return columnMapping[name.toLowerCase()] || -1;
+      };
+
+      // Founded year special handling
+      const foundedYearMatch = () => {
+        if (filters.foundedYear.length === 0) return true;
+        const foundedIdx = columnIndex('founded year');
+        if (foundedIdx === -1) return true;
+        
+        const year = row[foundedIdx];
+        if (!year || year.toString().trim() === '') return true; // Allow rows with no year data
+        
+        const yearNum = parseInt(year.toString().trim());
+        if (isNaN(yearNum)) return true; // Allow rows with invalid year data
+        
+        // Handle era-based selection (e.g., "pre-1950", "1950-1979", etc.)
+        const matches = filters.foundedYear.some(era => {
+          switch (era) {
+            case 'pre-1950': return yearNum < 1950;
+            case '1950-1979': return yearNum >= 1950 && yearNum <= 1979;
+            case '1980-1989': return yearNum >= 1980 && yearNum <= 1989;
+            case '1990-1999': return yearNum >= 1990 && yearNum <= 1999;
+            case '2000-2009': return yearNum >= 2000 && yearNum <= 2009;
+            case '2010-2014': return yearNum >= 2010 && yearNum <= 2014;
+            case '2015-2019': return yearNum >= 2015 && yearNum <= 2019;
+            case '2020-present': return yearNum >= 2020 && yearNum <= new Date().getFullYear();
+            default: return false;
+          }
+        });
+        
+        if (filters.foundedYear.length > 0 && year && year.toString().trim() !== '') {
+          console.log(`Year ${yearNum} matches eras ${filters.foundedYear.join(', ')}: ${matches}`);
+        }
+        
+        return matches;
+      };
+
+      const finalResult = (
+        match(columnIndex('region'), filters.region) &&
+        match(columnIndex('country'), filters.country) &&
+        match(columnIndex('sector'), filters.sector) &&
+        match(columnIndex('number of employees'), filters.employees) &&
+        match(columnIndex('revenue range'), filters.revenueRange) &&
+        foundedYearMatch()
+      );
+      
+      return finalResult;
+    });
+    
+    console.log('Filtered data length:', result.length);
+    return result;
+  }, [data, filters]);
+
   const processCountriesData = (): ChartData[] => {
     const countryCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
-      // Try different columns to find the actual Country data
-      let country = 'Unknown';
-      
-      // Try column D (index 3)
-      if (row[3] && typeof row[3] === 'string' && row[3].trim()) {
-        country = row[3];
-      }
-      // Try column E (index 4) - this might be regions
-      else if (row[4] && typeof row[4] === 'string' && row[4].trim()) {
-        country = row[4];
-      }
-      // Try column F (index 5)
-      else if (row[5] && typeof row[5] === 'string' && row[5].trim()) {
-        country = row[5];
-      }
-      // Try column G (index 6)
-      else if (row[6] && typeof row[6] === 'string' && row[6].trim()) {
-        country = row[6];
-      }
+    filteredData.forEach(row => {
+      // Use column D (index 3) for Country data
+      let country = row[3] || 'Unknown';
       
       countryCount[country] = (countryCount[country] || 0) + 1;
     });
@@ -84,11 +244,61 @@ const Statistics: React.FC = () => {
       .sort((a, b) => b.count - a.count); // Remove slice(0, 10) to show all
   };
 
+  // Process countries data for table with ranking
+  const processCountriesTableData = () => {
+    console.log('processCountriesTableData called');
+    console.log('filters.foundedYear:', filters.foundedYear);
+    console.log('filteredData length:', filteredData.length);
+    console.log('original data length:', data.length);
+    
+    const countryCount: { [key: string]: number } = {};
+    
+    filteredData.forEach((row, index) => {
+      // Debug first few rows to understand the data structure
+      if (index < 5) {
+        console.log(`Row ${index} full data:`, row);
+        console.log(`Row ${index} country data:`, row[4], 'Type:', typeof row[4]);
+      }
+      
+      // Use column index 4 for Country data (after transformation: 0=Row Number, 1=Logo, 2=Company Name, 3=Location, 4=Country)
+      const countryData = row[4];
+      let countryName = 'Unknown';
+      
+      if (countryData) {
+        if (typeof countryData === 'string') {
+          countryName = countryData.trim();
+        } else if (typeof countryData === 'object' && countryData !== null) {
+          // If it's an object, try to get a string representation
+          countryName = countryData.toString();
+          // If toString() returns [object Object], try accessing common properties
+          if (countryName === '[object Object]') {
+            countryName = countryData.value || countryData.name || countryData.label || JSON.stringify(countryData);
+          }
+        } else {
+          countryName = String(countryData);
+        }
+      }
+      
+      countryCount[countryName] = (countryCount[countryName] || 0) + 1;
+    });
+
+    console.log('countryCount:', countryCount);
+
+    return Object.entries(countryCount)
+      .map(([name, count]) => ({ 
+        rank: 0, // Will be set after sorting
+        country: name, 
+        numberOfCompanies: count 
+      }))
+      .sort((a, b) => b.numberOfCompanies - a.numberOfCompanies)
+      .map((item, index) => ({ ...item, rank: index + 1 }));
+  };
+
   const processCountryData = (): ChartData[] => {
     const countryCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
-      const country = row[4] || 'Unknown'; // Country column index
+    filteredData.forEach(row => {
+      const country = row[3] || 'Unknown'; // Country column index - Column D
       countryCount[country] = (countryCount[country] || 0) + 1;
     });
 
@@ -101,8 +311,8 @@ const Statistics: React.FC = () => {
   const processSectorData = (): ChartData[] => {
     const sectorCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
-      const sector = row[10] || 'Unknown'; // Sector column index
+    filteredData.forEach(row => {
+      const sector = row[11] || 'Unknown'; // Sector column index - Column L (Trying column 11)
       sectorCount[sector] = (sectorCount[sector] || 0) + 1;
     });
 
@@ -155,8 +365,8 @@ const Statistics: React.FC = () => {
   const processRevenueData = (): ChartData[] => {
     const revenueCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
-      const revenue = row[9] || 'Unknown'; // Revenue range column index
+    filteredData.forEach(row => {
+      const revenue = row[10] || 'Unknown'; // Revenue range column index - Column K (FIXED)
       revenueCount[revenue] = (revenueCount[revenue] || 0) + 1;
     });
 
@@ -196,7 +406,7 @@ const Statistics: React.FC = () => {
   const processEmployeeData = (): ChartData[] => {
     const employeeCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
+    filteredData.forEach(row => {
       const employees = row[8] || 'Unknown'; // Number of employees column index
       employeeCount[employees] = (employeeCount[employees] || 0) + 1;
     });
@@ -238,7 +448,7 @@ const Statistics: React.FC = () => {
   const processFoundedYearData = (): ChartData[] => {
     const yearCount: { [key: string]: number } = {};
     
-    data.forEach(row => {
+    filteredData.forEach(row => {
       const year = row[7] || 'Unknown'; // Founded year column index
       if (year && year !== 'Unknown') {
         const yearNum = parseInt(year);
@@ -311,132 +521,56 @@ const Statistics: React.FC = () => {
   }
 
   return (
-    <Box p={3}>
-      <Grid container spacing={3}>
-        {/* Countries Chart */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Regions
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={processCountryData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#1976d2" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Sectors Chart */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Revenue range
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={processSectorData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#dc004e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Revenue Chart */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Founded Year
-              </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={processFoundedYearData()} margin={{ top: 5, right: 30, left: 20, bottom: 120 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={120} 
-                    interval={0}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#388e3c" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Employees Chart */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Employee Ranges
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={processEmployeeData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#f57c00" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Countries Table */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Countries
-              </Typography>
-              <TableContainer component={Paper} sx={{ maxHeight: 500, overflow: 'auto' }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Rank</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Country</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Number of companies</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {processCountriesData().map((row, index) => (
-                      <TableRow key={row.name} hover>
-                        <TableCell align="center">{index + 1}</TableCell>
-                        <TableCell align="center" component="th" scope="row">
-                          {row.name}
-                        </TableCell>
-                        <TableCell align="center">{row.count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+    <Box sx={{ width: '100%' }}>
+      <StatisticsFilters
+        filters={filters}
+        filterOptions={filterOptions}
+        onFilterChange={handleFilterChange}
+        onClearAll={handleClearAllFilters}
+        allData={data}
+        headers={headers}
+      />
+      
+      {/* Countries Ranking Table */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ pb: 2 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+            Master Table
+          </Typography>
+          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
+                    Rank
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
+                    Country
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#001f3f', color: '#ffffff', textAlign: 'center' }}>
+                    Number of Companies
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {processCountriesTableData().map((row) => (
+                  <TableRow key={row.country} hover>
+                    <TableCell sx={{ fontWeight: 500, textAlign: 'center' }}>
+                      {row.rank}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>
+                      {row.country}
+                    </TableCell>
+                    <TableCell sx={{ textAlign: 'center' }}>
+                      {row.numberOfCompanies.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

@@ -49,6 +49,8 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import BalanceIcon from '@mui/icons-material/Balance';
 import ClearIcon from '@mui/icons-material/Clear';
 import AddIcon from '@mui/icons-material/Add';
+import CasinoIcon from '@mui/icons-material/Casino';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { fetchDataFromSheet } from '../../services/googleSheets';
 import Statistics from '../Statistics';
 import { useTheme, useMediaQuery } from '@mui/material';
@@ -152,6 +154,8 @@ const CompanyDirectory: React.FC = () => {
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortMenuAnchor, setSortMenuAnchor] = useState<null | HTMLElement>(null);
+  const [surpriseCompany, setSurpriseCompany] = useState<any[] | null>(null);
+  const [showSurprise, setShowSurprise] = useState(false);
   const [filters, setFilters] = useState<{
     country: string[];
     region: string[];
@@ -468,9 +472,22 @@ const CompanyDirectory: React.FC = () => {
   const sortedAndFilteredRows = React.useMemo(() => {
     let result = [...searchFilteredRows];
 
+    // If sorting by Added Date, we'll handle it in the main sort config
+    if (sortConfig?.column === 'Added Date') {
+      result.sort((a, b) => {
+        // Row number is always the first element in the row array
+        const aRowNum = a[0];
+        const bRowNum = b[0];
+        const aNum = typeof aRowNum === 'number' ? aRowNum : 0;
+        const bNum = typeof bRowNum === 'number' ? bRowNum : 0;
+        return sortConfig.direction === 'asc' 
+          ? aNum - bNum  // Oldest first (smaller row numbers first)
+          : bNum - aNum; // Newest first (larger row numbers first)
+      });
+    }
     // Apply founded year sorting if specified in filters
-    if (filters.foundedYear.includes('Oldest to Newest') || 
-        filters.foundedYear.includes('Newest to Oldest')) {
+    else if (filters.foundedYear.includes('Oldest to Newest') || 
+             filters.foundedYear.includes('Newest to Oldest')) {
       result.sort((a, b) => {
         const aYear = parseInt(a[foundedIdx]?.toString() || '0', 10) || 0;
         const bYear = parseInt(b[foundedIdx]?.toString() || '0', 10) || 0;
@@ -564,6 +581,22 @@ const CompanyDirectory: React.FC = () => {
       }
       return { column, direction: 'asc' };
     });
+  };
+
+  const handleSurpriseMe = () => {
+    // Get all available companies from the filtered data
+    const availableCompanies = [...sortedAndFilteredRows];
+    
+    if (availableCompanies.length === 0) {
+      return;
+    }
+    
+    // Select one random company
+    const randomIndex = Math.floor(Math.random() * availableCompanies.length);
+    const selectedCompany = availableCompanies[randomIndex];
+    
+    setSurpriseCompany(selectedCompany);
+    setShowSurprise(true);
   };
 
   const getRevenueStyle = (value: any) => {
@@ -846,6 +879,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
+          disabled={currentTab === 3}
         >
           Filters
         </Button>
@@ -871,7 +905,7 @@ const CompanyDirectory: React.FC = () => {
     <Paper 
       elevation={0} 
       sx={{ 
-        mb: 3,
+        mb: 1,
         backgroundColor: 'background.paper',
         border: '1px solid rgba(0,0,0,0.12)',
         boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
@@ -1149,6 +1183,148 @@ const CompanyDirectory: React.FC = () => {
             })()}
           </Box>
         </Box>
+      </Paper>
+      )}
+
+      {/* Surprise Me Section - Only show in Main Directory tab */}
+      {currentTab === 0 && (
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 2, 
+          borderRadius: 1.5, 
+          backgroundColor: 'background.paper', 
+          border: '1px solid rgba(0,0,0,0.12)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          mb: 2
+        }}
+      >
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          gap: 3
+        }}>
+          <Typography variant="subtitle1" sx={{ fontSize: '1rem', fontWeight: 600, color: 'text.primary' }}>
+            Discover Random Companies
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ShuffleIcon />}
+              onClick={handleSurpriseMe}
+            >
+              Surprise Me
+            </Button>
+            <IconButton
+              size="small"
+              onClick={() => setShowSurprise(false)}
+              sx={{ 
+                color: 'text.secondary',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            >
+              <ClearIcon />
+            </IconButton>
+          </Box>
+        </Box>
+        
+        {showSurprise && surpriseCompany && (
+          <Box sx={{ mt: 2, p: 2, backgroundColor: 'rgba(25, 118, 210, 0.05)', borderRadius: 1, border: '1px solid rgba(25, 118, 210, 0.2)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {(() => {
+                const logoIdxGrid = headers.findIndex(h => h.toLowerCase() === 'logo');
+                const nameIdxGrid = headers.findIndex(h => h.toLowerCase() === 'company name');
+                const bizgridIdxGrid = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+                const logoUrl = logoIdxGrid !== -1 ? surpriseCompany[logoIdxGrid] : '';
+                const name = nameIdxGrid !== -1 ? (surpriseCompany[nameIdxGrid] || '').toString() : '';
+                const bizgridScore = bizgridIdxGrid !== -1 ? surpriseCompany[bizgridIdxGrid] : '';
+                
+                return (
+                  <>
+                    <Box sx={{ position: 'relative' }}>
+                      <Card 
+                        elevation={2} 
+                        sx={{ 
+                          borderRadius: 2,
+                          width: 48,
+                          height: 48, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          p: 0.25, 
+                          transition: 'transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease',
+                          backgroundColor: clickedRow === surpriseCompany ? 'rgba(0, 0, 0, 0.04)' : 'white',
+                          border: '2px solid rgba(25, 118, 210, 0.3)',
+                          '&:hover': { 
+                            transform: 'translateY(-2px)', 
+                            boxShadow: 3,
+                            cursor: 'pointer'
+                          }
+                        }}
+                        onMouseEnter={() => !clickedRow && setHoveredRow(surpriseCompany)}
+                        onClick={() => {
+                          if (clickedRow === surpriseCompany) {
+                            setClickedRow(null);
+                            setHoveredRow(null);
+                          } else {
+                            setClickedRow(surpriseCompany);
+                            setHoveredRow(surpriseCompany);
+                          }
+                        }}
+                      >
+                        {logoUrl ? (
+                          <Box
+                            component="img"
+                            src={logoUrl}
+                            alt={name}
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              borderRadius: 1
+                            }}
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = 'none';
+                              const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (nextElement) {
+                                nextElement.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <Box
+                          sx={{
+                            display: logoUrl ? 'none' : 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: 1,
+                            fontSize: '0.6rem',
+                            fontWeight: 600,
+                            color: '#666',
+                            textAlign: 'center',
+                            p: 0.25
+                          }}
+                        >
+                          {name ? name.split(' ').slice(0, 2).map((word: string) => word[0]).join('').toUpperCase().slice(0, 3) : 'N/A'}
+                        </Box>
+                      </Card>
+                    </Box>
+                    <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600, color: 'text.primary' }}>
+                      {name}
+                    </Typography>
+                  </>
+                );
+              })()}
+            </Box>
+          </Box>
+        )}
       </Paper>
       )}
 
@@ -1964,6 +2140,26 @@ const CompanyDirectory: React.FC = () => {
           sx: { minWidth: 220 }
         }}
       >
+        <MenuItem 
+          onClick={() => {
+            setSortConfig({ column: 'Added Date', direction: sortConfig?.column === 'Added Date' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });
+            setSortMenuAnchor(null);
+          }}
+          selected={sortConfig?.column === 'Added Date'}
+          sx={{ 
+            backgroundColor: sortConfig?.column === 'Added Date' ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            '&:hover': { backgroundColor: sortConfig?.column === 'Added Date' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {sortConfig?.column === 'Added Date' ? <CheckIcon color="primary" /> : (sortConfig?.column === 'Added Date' && sortConfig?.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />)}
+          </ListItemIcon>
+          <ListItemText>
+            <Typography sx={{ fontWeight: sortConfig?.column === 'Added Date' ? 600 : 400 }}>
+              Added Date {sortConfig?.column === 'Added Date' ? (sortConfig?.direction === 'asc' ? '(Oldest First)' : '(Newest First)') : ''}
+            </Typography>
+          </ListItemText>
+        </MenuItem>
         <MenuItem 
           onClick={() => {
             setSortConfig({ column: 'Company Name', direction: sortConfig?.column === 'Company Name' && sortConfig?.direction === 'asc' ? 'desc' : 'asc' });

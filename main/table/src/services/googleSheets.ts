@@ -57,6 +57,7 @@ export interface SheetData {
   headers: string[];
   rows: any[][];
   columnMap?: { [key: string]: number }; // Map of original column names to indices
+  rowNumbers?: number[]; // Store original row numbers from the sheet
 }
 
 export const fetchDataFromSheet = async (): Promise<SheetData> => {
@@ -91,9 +92,15 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
       }
     });
     
+    // Store row numbers (1-based index from the sheet, excluding header)
+    const rowNumbers = Array.from({ length: rows.length - 1 }, (_, i) => i + 2);
+    
     // Transform data rows to combine City/State and Industry/Sub-Industry
-    const dataRows = rows.slice(1).map((row: any[]) => {
+    const dataRows = rows.slice(1).map((row: any[], index: number) => {
       const transformedRow: any[] = [];
+      
+      // Add row number as the first column
+      transformedRow.push(rowNumbers[index]);
       
       DISPLAY_COLUMNS.forEach(displayCol => {
         if (displayCol === 'Location') {
@@ -120,7 +127,12 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
       return transformedRow;
     });
 
-    return { headers: DISPLAY_COLUMNS, rows: dataRows, columnMap };
+    return { 
+      headers: ['Row Number', ...DISPLAY_COLUMNS], // Row Number is now the first column
+      rows: dataRows, 
+      columnMap,
+      rowNumbers 
+    };
   } catch (error: any) {
     console.error('Error fetching data from Google Sheets:', error);
     
