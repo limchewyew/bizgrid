@@ -200,7 +200,7 @@ const WorldMapPage: React.FC = () => {
 
       <TabPanel value={tabValue} index={1}>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={1}>
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Top 15 Countries by Number of Companies
@@ -236,7 +236,7 @@ const WorldMapPage: React.FC = () => {
               </ResponsiveContainer>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6}>
             <Paper elevation={2} sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Top 10 Countries

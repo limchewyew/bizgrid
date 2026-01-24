@@ -146,3 +146,44 @@ export const fetchDataFromSheet = async (): Promise<SheetData> => {
     throw error;
   }
 };
+
+export const fetchFromSpecificSheet = async (sheetName: string): Promise<any[][]> => {
+  if (!API_KEY || !SHEET_ID) {
+    console.error('Missing Google Sheets configuration. Please set REACT_APP_GOOGLE_API_KEY and REACT_APP_SHEET_ID in .env file');
+    return [];
+  }
+
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${API_KEY}`;
+    console.log('Fetching from URL:', url);
+    const response = await axios.get(url);
+    
+    const rows = response.data.values;
+    
+    if (!rows || rows.length === 0) {
+      console.log('No data found in the sheet');
+      return [];
+    }
+
+    return rows;
+  } catch (error: any) {
+    console.error('Error fetching data from Google Sheets:', error);
+    
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.error?.message || '';
+      
+      if (status === 400) {
+        throw new Error(`Bad Request (400): ${message}. Check that Google Sheets API is enabled and the API key is valid.`);
+      } else if (status === 403) {
+        throw new Error(`Access Denied (403): ${message}. Make sure the sheet is publicly accessible (Anyone with link can view).`);
+      } else if (status === 404) {
+        throw new Error(`Not Found (404): Sheet not found. Check your Sheet ID and Sheet Name.`);
+      } else {
+        throw new Error(`Error ${status}: ${message}`);
+      }
+    }
+    
+    throw error;
+  }
+};

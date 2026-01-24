@@ -54,7 +54,27 @@ import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { fetchDataFromSheet } from '../../services/googleSheets';
 import Statistics from '../Statistics';
 import WorldMapPage from '../WorldMapPage';
+import Newsletter from '../Newsletter';
+import Competitors from '../Competitors';
 import { useTheme, useMediaQuery } from '@mui/material';
+
+// Company interface for competitor selection
+interface Company {
+  row: any[];
+  name: string;
+  logo: string;
+  country: string;
+  region: string;
+  employees: string;
+  founded: string;
+  revenue: string;
+  bizgridScore: string;
+  activity: string;
+  description: string;
+  slogan: string;
+  website: string;
+  linkedin: string;
+}
 
 // Feature flags
 const ENABLE_PALETTE = false; // hide color palette for now
@@ -147,10 +167,15 @@ const CompanyDirectory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hoveredRow, setHoveredRow] = useState<any[] | null>(null);
   const [clickedRow, setClickedRow] = useState<any[] | null>(null);
+  const [competitorRow, setCompetitorRow] = useState<any[] | null>(null);
+  const [selectedCompetitor, setSelectedCompetitor] = useState<Company | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     column: string;
     direction: 'asc' | 'desc';
-  } | null>(null);
+  } | null>({
+    column: 'Bizgrid Score',
+    direction: 'desc'
+  });
   const [paletteCache, setPaletteCache] = useState<Record<string, string[]>>({});
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -600,6 +625,76 @@ const CompanyDirectory: React.FC = () => {
     setShowSurprise(true);
   };
 
+  // Handle competitor selection
+  const handleCompetitorSelect = (company: Company) => {
+    setCompetitorRow(company.row);
+    setSelectedCompetitor(company);
+  };
+
+  // Get border color for selected competitor card
+  const getCompetitorBorderColor = () => {
+    if (!selectedCompetitor || !parseCompanyForCompetitors(clickedRow || hoveredRow)) return '#2196f3';
+    
+    const originalCompany = parseCompanyForCompetitors(clickedRow || hoveredRow);
+    const isSameNation = selectedCompetitor.country === originalCompany?.country && selectedCompetitor.region === originalCompany?.region;
+    const isSameRegion = selectedCompetitor.region === originalCompany?.region && !isSameNation;
+    const isInternational = !isSameNation && !isSameRegion;
+    
+    return isSameNation
+      ? '#4caf50' // Green for same nation
+      : isSameRegion
+        ? '#ff9800' // Orange for same region
+        : '#9c27b0'; // Purple for international
+  };
+
+  // Parse company data from row for Competitors component
+  const parseCompanyForCompetitors = (row: any[] | null) => {
+    if (!row) return null;
+    
+    const getColumnIndex = (columnName: string) => 
+      headers.findIndex(h => h.toLowerCase() === columnName.toLowerCase());
+    
+    const getFieldValue = (index: number) => 
+      index !== -1 ? (row[index] || '').toString() : '';
+
+    const nameIdx = getColumnIndex('company name');
+    const logoIdx = getColumnIndex('logo');
+    const countryIdx = getColumnIndex('country');
+    const regionIdx = getColumnIndex('region');
+    const employeesIdx = getColumnIndex('number of employees');
+    const foundedIdx = getColumnIndex('founded year');
+    const revenueIdx = getColumnIndex('revenue range');
+    const bizgridIdx = getColumnIndex('bizgrid score');
+    const activityIdx = getColumnIndex('activity');
+    const subIndustryIdx = getColumnIndex('sub industry') !== -1 ? getColumnIndex('sub industry') : 
+                         getColumnIndex('sub-industry') !== -1 ? getColumnIndex('sub-industry') :
+                         getColumnIndex('subindustry') !== -1 ? getColumnIndex('subindustry') :
+                         getColumnIndex('sub industry sector') !== -1 ? getColumnIndex('sub industry sector') :
+                         getColumnIndex('industry') !== -1 ? getColumnIndex('industry') : -1;
+    const descriptionIdx = getColumnIndex('description');
+    const sloganIdx = getColumnIndex('slogan');
+    const websiteIdx = getColumnIndex('website');
+    const linkedinIdx = getColumnIndex('linkedin');
+
+    return {
+      row,
+      name: getFieldValue(nameIdx),
+      logo: getFieldValue(logoIdx),
+      country: getFieldValue(countryIdx),
+      region: getFieldValue(regionIdx),
+      employees: getFieldValue(employeesIdx),
+      founded: getFieldValue(foundedIdx),
+      revenue: getFieldValue(revenueIdx),
+      bizgridScore: getFieldValue(bizgridIdx),
+      activity: getFieldValue(activityIdx),
+      subIndustry: getFieldValue(subIndustryIdx),
+      description: getFieldValue(descriptionIdx),
+      slogan: getFieldValue(sloganIdx),
+      website: getFieldValue(websiteIdx),
+      linkedin: getFieldValue(linkedinIdx),
+    };
+  };
+
   const getRevenueStyle = (value: any) => {
     if (!value || typeof value !== 'string') return {};
     const normalized = value.trim().toLowerCase();
@@ -880,7 +975,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
-          disabled={currentTab === 3 || currentTab === 4}
+          disabled={currentTab === 3 || currentTab === 4 || currentTab === 5}
         >
           Filters
         </Button>
@@ -939,6 +1034,7 @@ const CompanyDirectory: React.FC = () => {
         <Tab label="Comparison" />
         <Tab label="Statistics" />
         <Tab label="World Map" />
+        <Tab label="Newsletter" />
       </Tabs>
     </Paper>
 
@@ -946,8 +1042,8 @@ const CompanyDirectory: React.FC = () => {
       {/* Content goes here */}
       </Box>
 
-      {/* Dashboard showing hovered company details - Hidden in comparison and statistics tabs */}
-      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && (
+      {/* Dashboard showing hovered company details - Hidden in statistics, comparison, world map, and newsletter tabs */}
+      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && currentTab !== 5 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 10 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -998,72 +1094,91 @@ const CompanyDirectory: React.FC = () => {
               
               return (
                 <>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                        {(() => {
+                          const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
+                          return nameIdx !== -1 ? (displayRow[nameIdx] || '').toString() : 'Explore companies';
+                        })()}
+                      </Typography>
                       {(() => {
-                        const nameIdx = headers.findIndex(h => h.toLowerCase() === 'company name');
-                        return nameIdx !== -1 ? (displayRow[nameIdx] || '').toString() : 'Explore companies';
-                      })()}
-                    </Typography>
-                    {(() => {
-                      const bizgridIdx = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
-                      const bizgridScore = bizgridIdx !== -1 ? displayRow[bizgridIdx] : '';
-                      if (bizgridScore && bizgridScore.toString().trim()) {
-                        return (
-                          <Tooltip 
-                            title="Bizgrid Score is calculated using an algorithm that takes into account Number of Employees, Legacy, and Revenue Range"
-                            arrow
-                            placement="top"
-                          >
-                            <Box sx={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              px: 2.5, 
-                              py: 0.75, 
-                              borderRadius: 3, 
-                              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', 
-                              color: '#2d3748',
-                              fontSize: '0.8rem',
-                              fontWeight: 600,
-                              letterSpacing: '0.5px',
-                              boxShadow: '0 4px 12px rgba(168, 237, 234, 0.3)',
-                              border: '1px solid rgba(255, 255, 255, 0.5)',
-                              backdropFilter: 'blur(10px)',
-                              cursor: 'help'
-                            }}>
+                        const bizgridIdx = headers.findIndex(h => h.toLowerCase() === 'bizgrid score');
+                        const bizgridScore = bizgridIdx !== -1 ? displayRow[bizgridIdx] : '';
+                        if (bizgridScore && bizgridScore.toString().trim()) {
+                          return (
+                            <Tooltip 
+                              title="Bizgrid Score is calculated using an algorithm that takes into account Number of Employees, Legacy, and Revenue Range"
+                              arrow
+                              placement="top"
+                            >
                               <Box sx={{ 
                                 display: 'inline-flex', 
-                                alignItems: 'center',
-                                gap: 0.5
+                                alignItems: 'center', 
+                                px: 2.5, 
+                                py: 0.75, 
+                                borderRadius: 3, 
+                                background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', 
+                                color: '#2d3748',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                letterSpacing: '0.5px',
+                                boxShadow: '0 4px 12px rgba(168, 237, 234, 0.3)',
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                backdropFilter: 'blur(10px)',
+                                cursor: 'help'
                               }}>
                                 <Box sx={{ 
-                                  width: 6, 
-                                  height: 6, 
-                                  borderRadius: '50%', 
-                                  backgroundColor: '#4a5568',
-                                  boxShadow: '0 0 8px rgba(74, 85, 104, 0.4)'
-                                }} />
-                                Bizgrid Score: {bizgridScore.toString()}
+                                  display: 'inline-flex', 
+                                  alignItems: 'center',
+                                  gap: 0.5
+                                }}>
+                                  <Box sx={{ 
+                                    width: 6, 
+                                    height: 6, 
+                                    borderRadius: '50%', 
+                                    backgroundColor: '#4a5568',
+                                    boxShadow: '0 0 8px rgba(74, 85, 104, 0.4)'
+                                  }} />
+                                  Bizgrid Score: {bizgridScore.toString()}
+                                </Box>
                               </Box>
-                            </Box>
-                          </Tooltip>
-                        );
-                      }
-                      return null;
-                    })()}
-                    {industryChain && (
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          color: 'text.secondary',
-                          opacity: 0.85,
-                          fontStyle: 'italic',
-                        }}
-                      >
-                        {industryChain}
-                      </Typography>
-                    )}
+                            </Tooltip>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => setCurrentTab(1)}
+                      sx={{
+                        borderColor: 'primary.main',
+                        color: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                          borderColor: 'primary.dark',
+                          color: 'primary.dark',
+                        },
+                        flexShrink: 0
+                      }}
+                    >
+                      Competitor Analysis
+                    </Button>
                   </Box>
+                  {industryChain && (
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: 'text.secondary',
+                        opacity: 0.85,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {industryChain}
+                    </Typography>
+                  )}
                 </>
               );
             })()}
@@ -1186,6 +1301,231 @@ const CompanyDirectory: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+      )}
+
+      {/* Company Details Card from Competitors - Moved here */}
+      {currentTab === 1 && competitorRow && (
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            mb: 1.5, 
+            p: 2.5, 
+            borderRadius: 2, 
+            backgroundColor: 'background.paper', 
+            border: `2px solid ${getCompetitorBorderColor()}`,
+            boxShadow: `0 0 12px ${getCompetitorBorderColor()}40`
+          }}
+        >
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.9rem' }}>
+              Selected Competitor
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
+            <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
+              {(() => {
+                const logoIdxDash = headers.findIndex(h => h.toLowerCase() === 'logo');
+                const nameIdxDash = headers.findIndex(h => h.toLowerCase() === 'company name');
+                const logoUrl = competitorRow && logoIdxDash !== -1 ? competitorRow[logoIdxDash] : '';
+                const name = competitorRow && nameIdxDash !== -1 ? (competitorRow[nameIdxDash] || '').toString() : '';
+                return logoUrl ? (
+                  <img 
+                    src={logoUrl} 
+                    alt={name} 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain',
+                      padding: 4
+                    }} 
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                  />
+                ) : (
+                  <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>No logo</Typography>
+                );
+              })()}
+            </Box>
+            <Box sx={{ flex: 1, width: '100%' }}>
+              {(() => {
+                if (!competitorRow) return null;
+                
+                const idx = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+                const get = (i: number) => (i !== -1 ? competitorRow[i] : '');
+                
+                const name = get(idx('Company Name'));
+                const country = get(idx('Country'));
+                const employees = get(idx('Number of employees'));
+                const founded = get(idx('Founded year'));
+                const revenue = get(idx('Revenue range'));
+                const linkedin = get(idx('LinkedIn'));
+                const website = get(idx('Website'));
+                const slogan = get(idx('Slogan'));
+                const description = get(idx('Description'));
+                const bizgridScore = get(idx('Bizgrid Score'));
+                
+                // Extract Sector, Industry, and Sub-Industry
+                const sectorData = get(idx('Sector'));
+                const industryData = get(idx('Industry')) as any;
+                const sector = typeof sectorData === 'object' ? (sectorData.sector ?? sectorData.industry ?? '').toString() : sectorData.toString();
+                const industry = industryData && typeof industryData === 'object' ? (industryData.industry ?? industryData.sector ?? '').toString() : industryData.toString();
+                const subIndustry = industryData && typeof industryData === 'object' ? (industryData.subIndustry ?? industryData.subSector ?? '').toString() : '';
+                
+                // Get Activity
+                const activityIdx = headers.findIndex(h => h.toLowerCase() === 'activity');
+                const activity = activityIdx !== -1 ? (competitorRow[activityIdx] || '').toString() : '';
+                
+                // Create industry chain string including Activity
+                const industryChain = [sector, industry, subIndustry, activity].filter(Boolean).join(' > ');
+                
+                return (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                          {name}
+                        </Typography>
+                        {bizgridScore && bizgridScore.trim() && (
+                          <Tooltip 
+                            title="Bizgrid Score is calculated using an algorithm that takes into account Number of Employees, Legacy, and Revenue Range"
+                            arrow
+                            placement="top"
+                          >
+                            <Box sx={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              px: 2.5, 
+                              py: 0.75, 
+                              borderRadius: 3, 
+                              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', 
+                              color: '#2d3748',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              letterSpacing: '0.5px',
+                              boxShadow: '0 4px 12px rgba(168, 237, 234, 0.3)',
+                              border: '1px solid rgba(255, 255, 255, 0.5)',
+                              backdropFilter: 'blur(10px)',
+                              cursor: 'help'
+                            }}>
+                              <Box sx={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center',
+                                gap: 0.5
+                              }}>
+                                <Box sx={{ 
+                                  width: 6, 
+                                  height: 6, 
+                                  borderRadius: '50%', 
+                                  backgroundColor: '#4a5568',
+                                  boxShadow: '0 0 8px rgba(74, 85, 104, 0.4)'
+                                }} />
+                                Bizgrid Score: {bizgridScore}
+                              </Box>
+                            </Box>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </Box>
+                    {industryChain && (
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 2, 
+                          color: 'text.secondary',
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                          fontStyle: 'italic',
+                          lineHeight: 1.4
+                        }}
+                      >
+                        {industryChain}
+                      </Typography>
+                    )}
+                    <Grid container spacing={2}>
+                      {/* First Column: Country, Links */}
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                          <Typography variant="subtitle2">Country:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{country || '-'}</Typography>
+                          
+                          <Typography variant="subtitle2">Links:</Typography>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            {linkedin && (
+                              <Link 
+                                href={linkedin.startsWith('http') ? linkedin : `https://${linkedin}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                sx={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  textDecoration: 'none',
+                                  '&:hover': {
+                                    textDecoration: 'underline'
+                                  }
+                                }}
+                              >
+                                <LinkedInIcon fontSize="small" />
+                              </Link>
+                            )}
+                            {website && (
+                              <Link 
+                                href={website.startsWith('http') ? website : `https://${website}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                sx={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  textDecoration: 'none',
+                                  '&:hover': {
+                                    textDecoration: 'underline'
+                                  }
+                                }}
+                              >
+                                <LanguageIcon fontSize="small" />
+                              </Link>
+                            )}
+                            {!linkedin && !website && (
+                              <Typography variant="body2">-</Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+                      
+                      {/* Second Column: Employee, Slogan */}
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                          <Typography variant="subtitle2">Employee:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{employees || '-'}</Typography>
+                          
+                          <Typography variant="subtitle2">Slogan:</Typography>
+                          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{slogan || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                      
+                      {/* Third Column: Founded, Revenue */}
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 1.5, rowGap: 0.5 }}>
+                          <Typography variant="subtitle2">Founded:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{founded || '-'}</Typography>
+                          
+                          <Typography variant="subtitle2">Revenue:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{revenue || '-'}</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                    <Box sx={{ mt: 2 }}>
+                      <Box sx={{ p: 1.5, borderRadius: 2, border: '1px solid rgba(0,0,0,0.12)', background: 'transparent' }}>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                          <Typography variant="subtitle2" component="span">Description:</Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', flex: 1 }}>{description || '-'}</Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </>
+                );
+              })()}
+            </Box>
+          </Box>
+        </Paper>
       )}
 
       {/* Surprise Me Section - Only show in Main Directory tab */}
@@ -1330,8 +1670,8 @@ const CompanyDirectory: React.FC = () => {
       </Paper>
       )}
 
-      {/* Our coverage stats card - Hidden only in Statistics tab */}
-      {currentTab !== 3 && (
+      {/* Our coverage stats card - Hidden only in Statistics, World Map, and Newsletter tabs */}
+      {currentTab !== 1 && currentTab !== 3 && currentTab !== 5 && (
         <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
         <Paper 
           elevation={0} 
@@ -1496,6 +1836,15 @@ const CompanyDirectory: React.FC = () => {
                 />
               </Box>
             </>
+          )}
+
+          {currentTab === 1 && ( // Competitors tab
+            <Competitors 
+              headers={headers} 
+              rows={rows} 
+              selectedCompany={parseCompanyForCompetitors(clickedRow || hoveredRow)}
+              onCompanySelect={handleCompetitorSelect}
+            />
           )}
 
           {currentTab === 2 && ( // Comparison tab
@@ -1824,6 +2173,10 @@ const CompanyDirectory: React.FC = () => {
 
           {currentTab === 4 && ( // World Map tab
             <WorldMapPage />
+          )}
+
+          {currentTab === 5 && ( // Newsletter tab
+            <Newsletter />
           )}
         </>
       )}
