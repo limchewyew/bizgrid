@@ -510,6 +510,7 @@ const Competitors: React.FC<{
   // Handle company selection from grid
   const handleCompanySelect = (company: Company) => {
     setHoveredCompany(company);
+    setClickedCompetitor(company); // Update the clicked competitor state
     // Call onCompanySelect to update the second company details card
     if (onCompanySelect) {
       onCompanySelect(company);
@@ -706,7 +707,7 @@ const Competitors: React.FC<{
       <Grid container spacing={3}>
         <Grid item xs={12} md={9}>
           <Paper elevation={0} sx={{ p: 3, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.12)', mb: 3 }}>
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.9rem' }}>
               Competitor Analysis Graph
@@ -715,6 +716,66 @@ const Competitors: React.FC<{
               Visualize competitors across different metrics
             </Typography>
           </Box>
+          
+          {/* Company List Display - Almanac Style - Absolute Position */}
+          {selectedGroupForDisplay.length >= 1 && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 250,
+                maxHeight: 200,
+                backgroundColor: 'white',
+                border: '1px solid #e0e0e0',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                overflowY: 'auto',
+                zIndex: 1
+              }}
+            >
+              <Box sx={{ p: 1.5, backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                  {selectedGroupForDisplay.length} Companies
+                </Typography>
+                <Button 
+                  size="small" 
+                  onClick={() => setSelectedGroupForDisplay([])}
+                  sx={{ fontSize: '0.7rem', minWidth: 'auto', padding: '2px 6px' }}
+                >
+                  Close
+                </Button>
+              </Box>
+              <Box sx={{ maxHeight: 150, overflowY: 'auto' }}>
+                {selectedGroupForDisplay.map((company: Company, index: number) => (
+                  <Box
+                    key={company.name}
+                    sx={{
+                      p: 1,
+                      borderBottom: '1px solid #f0f0f0',
+                      '&:hover': { backgroundColor: '#f9f9f9' },
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => handleCompanySelect(company)}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {company.logo && (
+                        <img 
+                          src={company.logo} 
+                          alt={company.name} 
+                          style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                        {company.name}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
         </Box>
 
         {/* Graph Controls */}
@@ -760,77 +821,6 @@ const Competitors: React.FC<{
               <MenuItem value="indirect">Indirect</MenuItem>
             </Select>
           </FormControl>
-
-          {/* Company List Display - Almanac Style */}
-          {selectedGroupForDisplay.length >= 1 && (
-            <Box
-              sx={{
-                width: 250,
-                maxHeight: 200,
-                backgroundColor: 'white',
-                border: '1px solid #e0e0e0',
-                borderRadius: 2,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                overflowY: 'auto',
-                flexShrink: 0
-              }}
-            >
-              <Box sx={{ p: 1.5, backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                  {selectedGroupForDisplay.length} Companies
-                </Typography>
-                <Button 
-                  size="small" 
-                  onClick={() => setSelectedGroupForDisplay([])}
-                  sx={{ fontSize: '0.7rem', minWidth: 'auto', padding: '2px 6px' }}
-                >
-                  Close
-                </Button>
-              </Box>
-              <Box sx={{ maxHeight: 150, overflowY: 'auto' }}>
-                {selectedGroupForDisplay.map((company: Company, index: number) => (
-                  <Box
-                    key={company.name}
-                    sx={{
-                      p: 1,
-                      borderBottom: '1px solid #f0f0f0',
-                      '&:hover': { backgroundColor: '#f9f9f9' },
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      handleCompanySelect(company);
-                      setSelectedGroupForDisplay([]);
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {company.logo ? (
-                        <img
-                          src={company.logo}
-                          alt={company.name}
-                          style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      ) : (
-                        <Box sx={{ width: 20, height: 20, backgroundColor: '#f0f0f0', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="caption" sx={{ fontSize: '0.5rem' }}>
-                            {company.name.charAt(0).toUpperCase()}
-                          </Typography>
-                        </Box>
-                      )}
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem', whiteSpace: 'normal', overflow: 'visible', lineHeight: 1.2 }}>
-                          {company.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                          {company.country}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          )}
         </Box>
 
         {/* Graph Container */}

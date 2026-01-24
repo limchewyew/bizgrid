@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
 import CompanyDirectory from './components/CompanyDirectory';
+import Footer from './components/Footer/Footer';
 
 const theme = createTheme({
   palette: {
@@ -130,8 +131,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ p: 3, width: '98%', margin: '0 auto' }}>
-        <CompanyDirectory />
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Box sx={{ p: 3, width: '98%', margin: '0 auto', flex: 1 }}>
+          <CompanyDirectory />
+        </Box>
+        <Footer />
       </Box>
     </ThemeProvider>
   );
