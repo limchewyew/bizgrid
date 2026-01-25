@@ -358,10 +358,17 @@ const Competitors: React.FC<{
     }
 
     // Helper functions to normalize values
+    const normalizeEmployeeRange = (val: string): string => {
+      const v = (val || '').toString().trim();
+      if (!v) return v;
+      return v.startsWith('10000') ? '10001+' : v;
+    };
+
     const normalizeEmployees = (employees: string): number => {
       if (!employees) return 0;
+      const normalizedEmp = normalizeEmployeeRange(employees);
       const empRanges = ['1-10', '11-50', '51-100', '101-250', '251-500', '501-1000', '1001-5000', '5001-10000', '10001+'];
-      const index = empRanges.findIndex(range => employees.includes(range.replace('+', '')));
+      const index = empRanges.indexOf(normalizedEmp);
       return index === -1 ? 0 : (index + 1) / empRanges.length;
     };
 
@@ -854,21 +861,41 @@ const Competitors: React.FC<{
             <line x1={80} y1={50} x2={80} y2={450} stroke="#333" strokeWidth="2" />
 
             {/* X-axis labels */}
-            {[...Array(11)].map((_, i) => {
-              const value = getAxisLabel(xAxisMetric, i / 10);
-              return (
-                <text
-                  key={`x-label-${i}`}
-                  x={80 + (i * 67)}
-                  y={470}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#666"
-                >
-                  {value}
-                </text>
-              );
-            })}
+            {xAxisMetric === 'employees' ? 
+              // For employees, show exact range labels
+              (() => {
+                const empRanges = ['1-10', '11-50', '51-100', '101-250', '251-500', '501-1000', '1001-5000', '5001-10000', '10001+'];
+                return empRanges.map((range, i) => (
+                  <text
+                    key={`x-label-${i}`}
+                    x={80 + (i * 670 / (empRanges.length - 1))}
+                    y={470}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="#666"
+                  >
+                    {range}
+                  </text>
+                ));
+              })()
+              :
+              // For other metrics, use the original 11-label approach
+              [...Array(11)].map((_, i) => {
+                const value = getAxisLabel(xAxisMetric, i / 10);
+                return (
+                  <text
+                    key={`x-label-${i}`}
+                    x={80 + (i * 67)}
+                    y={470}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="#666"
+                  >
+                    {value}
+                  </text>
+                );
+              })
+            }
 
             {/* Y-axis labels */}
             {[...Array(11)].map((_, i) => {
