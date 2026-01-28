@@ -117,205 +117,23 @@ const WorldMapPage: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%', p: 2 }}>
-      <Typography variant="h4" gutterBottom align="center">
-        Global Company Distribution
-      </Typography>
-
-      {/* Statistics Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Countries
-              </Typography>
-              <Typography variant="h4">
-                {stats.totalCountries}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Companies
-              </Typography>
-              <Typography variant="h4">
-                {stats.totalCompanies}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Entries
-              </Typography>
-              <Typography variant="h4">
-                {stats.totalEntries}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Avg Companies/Country
-              </Typography>
-              <Typography variant="h4">
-                {stats.totalCountries > 0 ? (stats.totalCompanies / stats.totalCountries).toFixed(1) : '0'}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Tabs */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          centered
-        >
-          <Tab label="World Map" />
-          <Tab label="Top Countries" />
-          <Tab label="Distribution" />
-        </Tabs>
+      <Paper elevation={2} sx={{ p: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' }, alignItems: 'flex-start' }}>
+          {/* World Map Content */}
+          <Box sx={{ width: { xs: '100%', lg: '60%' }, minWidth: 0 }}>
+            <ChoroplethMap 
+              data={countryData} 
+              title="World Atlas"
+              colorScheme="blue"
+            />
+          </Box>
+          
+          {/* Unmapped Countries Table */}
+          <Box sx={{ width: { xs: '100%', lg: '40%' }, flexShrink: 0 }}>
+            <UnmappedCountriesTable data={countryData} />
+          </Box>
+        </Box>
       </Paper>
-
-      {/* Tab Panels */}
-      <TabPanel value={tabValue} index={0}>
-        <ChoroplethMap 
-          data={countryData} 
-          title="Company Distribution by Country"
-          colorScheme="blue"
-        />
-        <UnmappedCountriesTable data={countryData} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={1}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={1}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Top 15 Countries by Number of Companies
-              </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="country" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={100}
-                    interval={0}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div style={{ backgroundColor: 'white', padding: '8px', border: '1px solid #ccc' }}>
-                            <p><strong>{data.fullCountry}</strong></p>
-                            <p>Companies: {data.companies}</p>
-                            <p>Total Entries: {data.entries}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="companies" fill="#2196f3" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Top 10 Countries
-              </Typography>
-              {stats.topCountries.slice(0, 10).map((country, index) => (
-                <Box key={country.country} sx={{ mb: 2, display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">
-                    {index + 1}. {country.country}
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    {country.value}
-                  </Typography>
-                </Box>
-              ))}
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={2}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Company Distribution (Top 8 Countries)
-              </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <PieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                    outerRadius={120}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Regional Insights
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" paragraph>
-                  <strong>Most Represented:</strong> {stats.topCountries[0]?.country} ({stats.topCountries[0]?.value} companies)
-                </Typography>
-                <Typography variant="body2" paragraph>
-                  <strong>Countries with Data:</strong> {stats.totalCountries}
-                </Typography>
-                <Typography variant="body2" paragraph>
-                  <strong>Average per Country:</strong> {stats.totalCountries > 0 ? (stats.totalCompanies / stats.totalCountries).toFixed(1) : '0'} companies
-                </Typography>
-                <Typography variant="body2" paragraph>
-                  <strong>Top 3 Countries:</strong>
-                </Typography>
-                <Box component="ul" sx={{ pl: 2, mt: 1 }}>
-                  {stats.topCountries.slice(0, 3).map((country, index) => (
-                    <li key={country.country}>
-                      <Typography variant="body2">
-                        {country.country}: {country.value} companies ({((country.value / stats.totalCompanies) * 100).toFixed(1)}%)
-                      </Typography>
-                    </li>
-                  ))}
-                </Box>
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      </TabPanel>
     </Box>
   );
 };

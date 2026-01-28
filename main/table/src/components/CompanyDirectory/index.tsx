@@ -56,6 +56,7 @@ import Statistics from '../Statistics';
 import WorldMapPage from '../WorldMapPage';
 import Newsletter from '../Newsletter';
 import Competitors from '../Competitors';
+import AboutUs from '../AboutUs';
 import { useTheme, useMediaQuery } from '@mui/material';
 
 // Company interface for competitor selection
@@ -192,6 +193,7 @@ const CompanyDirectory: React.FC = () => {
     industry: string[];
     subIndustry: string[];
     activity: string[];
+    bizgridScore: string[];
   }>({
     country: [],
     region: [],
@@ -201,7 +203,8 @@ const CompanyDirectory: React.FC = () => {
     sector: [],
     industry: [],
     subIndustry: [],
-    activity: []
+    activity: [],
+    bizgridScore: []
   });
 
   const revenueRangeOptions = [
@@ -228,6 +231,14 @@ const CompanyDirectory: React.FC = () => {
   ];
 
   const foundedYearOptions = ['Oldest to Newest', 'Newest to Oldest'];
+
+  const bizgridScoreOptions = [
+    '0-20',
+    '20-40', 
+    '40-60',
+    '60-80',
+    '80-100'
+  ];
 
   const normalizeEmployeeRange = (val: string) => {
     const v = (val || '').toString().trim();
@@ -279,22 +290,35 @@ const CompanyDirectory: React.FC = () => {
   const revenueIdx = columnIndex('revenue range');
   const accoladesIdx = columnIndex('accolades');
   const activityIdx = columnIndex('activity');
+  const bizgridIdx = columnIndex('bizgrid score');
 
   // Removed sticky column layout (table replaced by card grid)
 
   const filterOptions = React.useMemo(() => {
-    const unique = (idx: number, predefinedOptions?: string[]) =>
-      idx === -1
-        ? predefinedOptions || []
-        : Array.from(
-            new Set([
-              ...(predefinedOptions || []),
-              ...rows
-                .map(r => r[idx])
-                .filter(Boolean)
-                .map(v => v.toString().trim())
-            ])
-          ).sort((a, b) => a.localeCompare(b));
+    const unique = (idx: number, predefinedOptions?: string[]) => {
+      if (idx === -1) return predefinedOptions?.map(opt => ({ label: opt, count: 0 })) || [];
+      
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = r[idx];
+        if (val) {
+          const key = val.toString().trim();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      
+      const options = Array.from(
+        new Set([
+          ...(predefinedOptions || []),
+          ...rows
+            .map(r => r[idx])
+            .filter(Boolean)
+            .map(v => v.toString().trim())
+        ])
+      ).sort((a, b) => a.localeCompare(b));
+      
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
     const extractSector = (val: any) => {
       if (!val) return '';
       if (typeof val === 'object') return (val.sector ?? val.industry ?? '').toString().trim();
@@ -311,50 +335,132 @@ const CompanyDirectory: React.FC = () => {
       return '';
     };
 
-    const sectorOptions = sectorIdx === -1
-      ? []
-      : Array.from(new Set(rows.map(r => extractSector(r[sectorIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-    const industryOptions = industryIdx === -1
-      ? []
-      : Array.from(new Set(rows.map(r => extractIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-    const subIndustryOptions = industryIdx === -1
-      ? []
-      : Array.from(new Set(rows.map(r => extractSubIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-      
-    const activityOptions = activityIdx === -1
-      ? []
-      : Array.from(new Set(rows.map(r => {
+    const getSectorOptions = () => {
+      if (sectorIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = extractSector(r[sectorIdx]);
+        if (val) {
+          counts[val] = (counts[val] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(rows.map(r => extractSector(r[sectorIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getIndustryOptions = () => {
+      if (industryIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = extractIndustry(r[industryIdx]);
+        if (val) {
+          counts[val] = (counts[val] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(rows.map(r => extractIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getSubIndustryOptions = () => {
+      if (industryIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = extractSubIndustry(r[industryIdx]);
+        if (val) {
+          counts[val] = (counts[val] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(rows.map(r => extractSubIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getActivityOptions = () => {
+      if (activityIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = r[activityIdx];
+        if (val) {
+          const key = val.toString().trim();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(rows.map(r => {
           const val = r[activityIdx];
           return val ? val.toString().trim() : '';
         }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-
-    const countryOptions = countryIdx === -1
-      ? []
-      : Array.from(new Set(
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getCountryOptions = () => {
+      if (countryIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = r[countryIdx];
+        if (val) {
+          const key = val.toString().trim();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(
           rows.map(r => r[countryIdx])
             .filter((country: any) => country && country.toString().trim())
             .map((country: any) => country.toString().trim())
         )).sort((a, b) => a.localeCompare(b));
-
-    const regionOptions = regionIdx === -1
-      ? []
-      : Array.from(new Set(
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getRegionOptions = () => {
+      if (regionIdx === -1) return [];
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const val = r[regionIdx];
+        if (val) {
+          const key = val.toString().trim();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      const options = Array.from(new Set(
           rows.map(r => r[regionIdx])
             .filter((region: any) => region && region.toString().trim())
             .map((region: any) => region.toString().trim())
         )).sort((a, b) => a.localeCompare(b));
+      return options.map(label => ({ label, count: counts[label] || 0 }));
+    };
+    
+    const getBizgridScoreOptions = () => {
+      const counts: { [key: string]: number } = {};
+      rows.forEach(r => {
+        const raw = r[bizgridIdx];
+        if (raw) {
+          const score = parseFloat(raw.toString());
+          if (!isNaN(score)) {
+            let range = '';
+            if (score >= 0 && score <= 20) range = '0-20';
+            else if (score > 20 && score <= 40) range = '20-40';
+            else if (score > 40 && score <= 60) range = '40-60';
+            else if (score > 60 && score <= 80) range = '60-80';
+            else if (score > 80 && score <= 100) range = '80-100';
+            
+            if (range) counts[range] = (counts[range] || 0) + 1;
+          }
+        }
+      });
+      return bizgridScoreOptions.map(label => ({ label, count: counts[label] || 0 }));
+    };
     return {
-      country: countryOptions,
-      region: regionOptions,
+      country: getCountryOptions(),
+      region: getRegionOptions(),
       // Keep employees in predefined ascending order only
-      employees: employeeRangeOptions,
+      employees: unique(employeesIdx, employeeRangeOptions),
       foundedYear: unique(foundedIdx, foundedYearOptions),
       // Keep revenue in predefined ascending order only
-      revenueRange: revenueRangeOptions,
-      sector: sectorOptions,
-      industry: industryOptions,
-      subIndustry: subIndustryOptions,
-      activity: activityOptions
+      revenueRange: unique(revenueIdx, revenueRangeOptions),
+      sector: getSectorOptions(),
+      industry: getIndustryOptions(),
+      subIndustry: getSubIndustryOptions(),
+      activity: getActivityOptions(),
+      // Keep bizgrid score in predefined ranges
+      bizgridScore: getBizgridScoreOptions()
     };
   }, [rows, filters.country, filters.region, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
 
@@ -426,11 +532,30 @@ const CompanyDirectory: React.FC = () => {
           if (!val) return false;
           return filters.activity.includes(val.toString().trim());
         })() &&
+        // Bizgrid Score filter
+        (() => {
+          if (bizgridIdx === -1 || filters.bizgridScore.length === 0) return true;
+          const raw = row[bizgridIdx];
+          if (!raw) return false;
+          const score = parseFloat(raw.toString());
+          if (isNaN(score)) return false;
+          
+          return filters.bizgridScore.some(range => {
+            switch (range) {
+              case '0-20': return score >= 0 && score <= 20;
+              case '20-40': return score > 20 && score <= 40;
+              case '40-60': return score > 40 && score <= 60;
+              case '60-80': return score > 60 && score <= 80;
+              case '80-100': return score > 80 && score <= 100;
+              default: return false;
+            }
+          });
+        })() &&
         foundedYearMatch() &&
         match(revenueIdx, filters.revenueRange)
       );
     });
-  }, [rows, filters, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx]);
+  }, [rows, filters, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, bizgridIdx, activityIdx]);
 
   const searchFilteredRows = filteredByFilters.filter(row =>
     row.some(
@@ -975,7 +1100,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
-          disabled={currentTab === 3 || currentTab === 4 || currentTab === 5}
+          disabled={currentTab === 3 || currentTab === 4 || currentTab === 5 || currentTab === 6}
         >
           Filters
         </Button>
@@ -1035,6 +1160,7 @@ const CompanyDirectory: React.FC = () => {
         <Tab label="Statistics" />
         <Tab label="World Map" />
         <Tab label="Newsletter" />
+        <Tab label="About Us" />
       </Tabs>
     </Paper>
 
@@ -1042,8 +1168,8 @@ const CompanyDirectory: React.FC = () => {
       {/* Content goes here */}
       </Box>
 
-      {/* Dashboard showing hovered company details - Hidden in statistics, comparison, world map, and newsletter tabs */}
-      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && currentTab !== 5 && (
+      {/* Dashboard showing hovered company details - Hidden in statistics, comparison, world map, newsletter, and about us tabs */}
+      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && currentTab !== 5 && currentTab !== 6 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 11 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -2178,6 +2304,10 @@ const CompanyDirectory: React.FC = () => {
           {currentTab === 5 && ( // Newsletter tab
             <Newsletter />
           )}
+
+          {currentTab === 6 && ( // About Us tab
+            <AboutUs />
+          )}
         </>
       )}
 
@@ -2188,11 +2318,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.region}
-              value={filters.region}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, region: value }))}
+              value={filters.region.map(r => ({ label: r, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, region: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2219,11 +2362,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.country}
-              value={filters.country}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, country: value }))}
+              value={filters.country.map(c => ({ label: c, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, country: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2250,11 +2406,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.sector}
-              value={filters.sector}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, sector: value }))}
+              value={filters.sector.map(s => ({ label: s, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, sector: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2281,11 +2450,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.industry}
-              value={filters.industry}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, industry: value }))}
+              value={filters.industry.map(i => ({ label: i, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, industry: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2312,11 +2494,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.subIndustry}
-              value={filters.subIndustry}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, subIndustry: value }))}
+              value={filters.subIndustry.map(si => ({ label: si, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, subIndustry: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2343,11 +2538,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.activity}
-              value={filters.activity}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, activity: value }))}
+              value={filters.activity.map(a => ({ label: a, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, activity: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2374,11 +2582,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.employees}
-              value={filters.employees}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, employees: value }))}
+              value={filters.employees.map(e => ({ label: e, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, employees: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2405,11 +2626,24 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.foundedYear}
-              value={filters.foundedYear}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, foundedYear: value }))}
+              value={filters.foundedYear.map(fy => ({ label: fy, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, foundedYear: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
@@ -2436,17 +2670,74 @@ const CompanyDirectory: React.FC = () => {
             <Autocomplete
               multiple
               options={filterOptions.revenueRange}
-              value={filters.revenueRange}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, revenueRange: value }))}
+              value={filters.revenueRange.map(rr => ({ label: rr, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, revenueRange: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip label={option} {...getTagProps({ index })} />
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
                 ))
               }
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Revenue range"
+                  placeholder="Search"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#9c27b0',
+                      },
+                    },
+                  }}
+                />
+              )}
+            />
+            <Autocomplete
+              multiple
+              options={filterOptions.bizgridScore}
+              value={filters.bizgridScore.map(bs => ({ label: bs, count: 0 }))}
+              onChange={(_, value) => setFilters(prev => ({ ...prev, bizgridScore: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              renderOption={(props, option) => {
+                const label = typeof option === 'string' ? option : option.label;
+                const count = typeof option === 'string' ? 0 : option.count;
+                return (
+                  <li {...props}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{label}</span>
+                      <span style={{ color: '#666', fontSize: '0.875rem' }}>{count}</span>
+                    </Box>
+                  </li>
+                );
+              }}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip label={typeof option === 'string' ? option : option.label} {...getTagProps({ index })} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Bizgrid Score"
                   placeholder="Search"
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -2478,7 +2769,8 @@ const CompanyDirectory: React.FC = () => {
                 sector: [], 
                 industry: [], 
                 subIndustry: [],
-                activity: [] 
+                activity: [],
+                bizgridScore: []
               })
             }
           >

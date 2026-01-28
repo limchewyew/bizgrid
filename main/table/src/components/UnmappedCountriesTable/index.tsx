@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Typography,
@@ -9,8 +10,22 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Chip
+  Chip,
+  Box as MuiBox,
+  Tooltip,
+  IconButton
 } from '@mui/material';
+import InfoIcon from '@mui/icons-material/Info';
+
+// Function to get color based on value (similar to map's color scale)
+const getColorForValue = (value: number, maxValue: number) => {
+  // Using a blue color scale similar to the map
+  const intensity = Math.min(1, value / maxValue);
+  const hue = 210; // Blue hue
+  const saturation = 70;
+  const lightness = 90 - (intensity * 40); // Lighter for lower values
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+};
 
 interface CountryData {
   country: string;
@@ -22,88 +37,93 @@ interface UnmappedCountriesTableProps {
   data: CountryData[];
 }
 
-// List of countries not in world atlas
-const UNMAPPED_COUNTRIES = [
-  'Andorra', 'Antigua and Barbuda', 'Bahrain', 'Barbados', 'Bermuda',
-  'British Virgin Islands', 'Cape Verde', 'Cayman Islands', 'Curacao',
-  'Democratic Republic of the Congo', 'Eswatini', 'Faroe Islands',
-  'French Polynesia', 'Gibraltar', 'Isle of Man', 'Jersey', 'Kiribati',
-  'Liechtenstein', 'Maldives', 'Malta', 'Marshall Islands', 'Mauritius',
-  'Monaco', 'Nauru', 'North Macedonia', 'Saint Vincent and the Grenadines',
-  'Samoa', 'Sao Tome and Principe', 'Seychelles', 'Singapore', 'Tonga',
-  'Turks and Caicos Islands', 'U.S. Virgin Islands'
-];
-
 const UnmappedCountriesTable: React.FC<UnmappedCountriesTableProps> = ({ data }) => {
-  // Filter data to only include unmapped countries
-  const unmappedData = data.filter(item => 
-    UNMAPPED_COUNTRIES.includes(item.country) ||
-    item.country === 'Hong Kong' ||
-    item.country === 'Macau'
-  ).sort((a, b) => b.value - a.value);
+  const theme = useTheme();
+  const [worldAtlasCountries, setWorldAtlasCountries] = useState<Set<string>>(new Set());
+  
+  // Load world atlas countries to compare against dataset
+  useEffect(() => {
+    const geoUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+    fetch(geoUrl)
+      .then(res => res.json())
+      .then(geoData => {
+        const countries = new Set<string>(
+          geoData.objects.countries.geographies.map((geo: any) => geo.properties.name as string)
+        );
+        setWorldAtlasCountries(countries);
+      })
+      .catch(err => console.error('Error loading world atlas countries:', err));
+  }, []);
+  
+  // Filter data to find countries not in world atlas
+  const unmappedData = useMemo(() => {
+    // If world atlas countries haven't loaded yet, show all data as unmapped temporarily
+    if (worldAtlasCountries.size === 0) {
+      console.log('World atlas countries not loaded yet, showing all data as unmapped temporarily');
+      return data.sort((a, b) => b.value - a.value);
+    }
+    
+    const filtered = data.filter(item => {
+      const countryName = item.country;
+      const isUnmapped = !worldAtlasCountries.has(countryName) || 
+                        countryName === 'Hong Kong' || 
+                        countryName === 'Macau';
+      return isUnmapped;
+    }).sort((a, b) => b.value - a.value);
+    
+    console.log('World atlas countries loaded:', worldAtlasCountries.size);
+    console.log('Total countries in data:', data.length);
+    console.log('Unmapped countries found:', filtered.length);
+    
+    return filtered;
+  }, [data, worldAtlasCountries]);
+
+  // Find max value for color scaling
+  const maxValue = unmappedData.length > 0 ? unmappedData[0].value : 1;
 
   if (unmappedData.length === 0) {
     return null;
   }
-
+  
   return (
-    <Paper elevation={2} sx={{ p: 3, mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Countries & Regions Not Displayed on Map
-      </Typography>
-      <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
-        The following countries and special administrative regions are not included in the world map atlas 
-        but are tracked in your database:
-      </Typography>
-      
-      <TableContainer>
+    <Box sx={{ mt: 2 }}>
+      <TableContainer component={Paper} sx={{ maxHeight: 560, overflowY: 'auto' }}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Country/Region</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 'bold' }}>Companies</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 'bold' }}>Total Entries</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', width: '150px' }}>Country/Region</TableCell>
+              <TableCell sx={{ width: '100px', fontWeight: 'bold', textAlign: 'center' }}>Distribution</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Companies</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {unmappedData.map((item) => (
-              <TableRow key={item.country} hover>
-                <TableCell>{item.country}</TableCell>
-                <TableCell align="right">
-                  <Typography variant="body2" fontWeight="bold">
+            {unmappedData.map((item) => {
+              const color = getColorForValue(item.value, maxValue);
+              
+              return (
+                <TableRow key={item.country} hover>
+                  <TableCell sx={{ textAlign: 'center' }}>{item.country}</TableCell>
+                  <TableCell align="center" sx={{ width: '40px' }}>
+                    <MuiBox 
+                      sx={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: color,
+                        borderRadius: '4px',
+                        margin: '0 auto'
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                     {item.value.toLocaleString()}
-                  </Typography>
-                </TableCell>
-                <TableCell align="right">{item.count.toLocaleString()}</TableCell>
-                <TableCell>
-                  {item.country === 'Hong Kong' || item.country === 'Macau' ? (
-                    <Chip 
-                      label="Special Administrative Region" 
-                      size="small" 
-                      color="primary" 
-                      variant="outlined"
-                    />
-                  ) : (
-                    <Chip 
-                      label="Not in Atlas" 
-                      size="small" 
-                      color="default" 
-                      variant="outlined"
-                    />
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
-      
-      <Typography variant="caption" sx={{ mt: 2, display: 'block', color: '#666' }}>
-        Note: These regions are included in the overall statistics but cannot be displayed geographically 
-        on the world map due to limitations in the mapping dataset.
-      </Typography>
-    </Paper>
+    </Box>
   );
 };
 
