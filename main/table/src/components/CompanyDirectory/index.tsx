@@ -1100,7 +1100,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
-          disabled={currentTab === 3 || currentTab === 4 || currentTab === 5 || currentTab === 6}
+          disabled={currentTab === 3 || currentTab === 5 || currentTab === 6}
         >
           Filters
         </Button>
@@ -1157,8 +1157,7 @@ const CompanyDirectory: React.FC = () => {
         <Tab label="Main Directory" />
         <Tab label="Competitors" />
         <Tab label="Comparison" />
-        <Tab label="Statistics" />
-        <Tab label="World Map" />
+        <Tab label="Distribution" />
         <Tab label="Newsletter" />
         <Tab label="About Us" />
       </Tabs>
@@ -1169,7 +1168,7 @@ const CompanyDirectory: React.FC = () => {
       </Box>
 
       {/* Dashboard showing hovered company details - Hidden in statistics, comparison, world map, newsletter, and about us tabs */}
-      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && currentTab !== 5 && currentTab !== 6 && (
+      {currentTab !== 2 && currentTab !== 3 && currentTab !== 4 && currentTab !== 5 && (
       <Paper elevation={1} sx={{ mb: 1.5, p: 2.5, borderRadius: 2, backgroundColor: 'background.paper', border: '1px solid rgba(0,0,0,0.06)', position: 'sticky', top: 8, zIndex: 11 }}>
         <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'flex-start' }, gap: 2.5, flexDirection: { xs: 'column', md: 'row' } }}>
           <Box sx={{ width: 48, height: 48, minWidth: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1.5, background: 'rgba(0,0,0,0.04)', overflow: 'hidden', mt: { xs: 0, md: 1 }, flexShrink: 0 }}>
@@ -2293,19 +2292,15 @@ const CompanyDirectory: React.FC = () => {
             </>
           )}
 
-          {currentTab === 3 && ( // Statistics tab
-            <Statistics />
+          {currentTab === 3 && ( // Distribution tab (previously World Map)
+            <WorldMapPage filters={filters} />
           )}
 
-          {currentTab === 4 && ( // World Map tab
-            <WorldMapPage />
-          )}
-
-          {currentTab === 5 && ( // Newsletter tab
+          {currentTab === 4 && ( // Newsletter tab
             <Newsletter />
           )}
 
-          {currentTab === 6 && ( // About Us tab
+          {currentTab === 5 && ( // About Us tab
             <AboutUs />
           )}
         </>

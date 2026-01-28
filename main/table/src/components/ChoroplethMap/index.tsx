@@ -35,6 +35,7 @@ const ChoroplethMap: React.FC<ChoroplethMapProps> = ({
   const [geographies, setGeographies] = useState<any[]>([]);
   const [tooltipContent, setTooltipContent] = useState<string>('');
   const [currentCenter, setCurrentCenter] = useState<[number, number]>([10.1, -18.4]);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Color schemes
   const colorSchemes = {
@@ -306,7 +307,11 @@ const countryFlagMap: { [key: string]: string } = {
   'Tajikistan': 'https://flagcdn.com/w20/tj.png',
   'Brunei': 'https://flagcdn.com/w20/bn.png',
   'East Timor': 'https://flagcdn.com/w20/tl.png',
-  'Timor-Leste': 'https://flagcdn.com/w20/tl.png'
+  'Timor-Leste': 'https://flagcdn.com/w20/tl.png',
+  'Dominica': 'https://flagcdn.com/w20/dm.png',
+  'Malawi': 'https://flagcdn.com/w20/mw.png',
+  'Mauritania': 'https://flagcdn.com/w20/mr.png',
+  'Democratic Republic of the Congo': 'https://flagcdn.com/w20/cd.png'
 };
 
   // Normalize country names
@@ -350,7 +355,7 @@ const countryFlagMap: { [key: string]: string } = {
       .catch(err => console.error('Error loading geographies:', err));
   }, []);
 
-  const handleGeographyEnter = (geo: any) => {
+  const handleGeographyEnter = (geo: any, event: React.MouseEvent) => {
     const countryName = geo.properties.name;
     const countryData = dataMap.get(countryName);
     const flagUrl = countryFlagMap[countryName];
@@ -366,6 +371,9 @@ const countryFlagMap: { [key: string]: string } = {
         : `${countryName}: No data`;
       setTooltipContent(tooltipText);
     }
+    
+    // Update mouse position
+    setMousePosition({ x: event.clientX, y: event.clientY });
   };
 
   const handleGeographyLeave = () => {
@@ -436,7 +444,8 @@ const countryFlagMap: { [key: string]: string } = {
                         outline: 'none',
                       },
                     }}
-                    onMouseEnter={() => handleGeographyEnter(geo)}
+                    onMouseEnter={(event) => handleGeographyEnter(geo, event)}
+                    onMouseMove={(event) => setMousePosition({ x: event.clientX, y: event.clientY })}
                     onMouseLeave={handleGeographyLeave}
                   />
                 ))
@@ -448,9 +457,9 @@ const countryFlagMap: { [key: string]: string } = {
         {tooltipContent && (
           <Box
             sx={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
+              position: 'fixed',
+              top: mousePosition.y - 40,
+              left: mousePosition.x + 10,
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
               color: 'white',
               padding: '8px 12px',
@@ -458,6 +467,7 @@ const countryFlagMap: { [key: string]: string } = {
               fontSize: '14px',
               pointerEvents: 'none',
               zIndex: 1000,
+              transform: 'translate(-50%, 0)',
             }}
             dangerouslySetInnerHTML={{ __html: tooltipContent }}
           />
