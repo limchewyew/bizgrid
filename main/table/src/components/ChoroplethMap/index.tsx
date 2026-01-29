@@ -10,6 +10,7 @@ import { scaleQuantile } from 'd3-scale';
 import { Box, Typography, useTheme, Tooltip, IconButton } from '@mui/material';
 import { Paper } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
+import { processCountryDetailedData, CountryDetailedData } from '../../utils/countryDataProcessor';
 
 // GeoJSON URL for world countries
 const geoUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
@@ -21,21 +22,24 @@ interface CountryData {
 }
 
 interface ChoroplethMapProps {
-  data: CountryData[];
+  data: any[]; // Using any to accept both CountryData and CountryDetailedData
   title?: string;
   colorScheme?: 'blue' | 'green' | 'red' | 'purple';
+  sheetData?: any; // Add sheetData prop for detailed processing
 }
 
 const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ 
   data, 
   title = 'World Map',
-  colorScheme = 'blue' 
+  colorScheme = 'blue',
+  sheetData 
 }) => {
   const theme = useTheme();
   const [geographies, setGeographies] = useState<any[]>([]);
   const [tooltipContent, setTooltipContent] = useState<string>('');
   const [currentCenter, setCurrentCenter] = useState<[number, number]>([10.1, -18.4]);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [detailedCountryData, setDetailedCountryData] = useState<CountryDetailedData[]>([]);
 
   // Color schemes
   const colorSchemes = {
@@ -160,6 +164,7 @@ const countryFlagMap: { [key: string]: string } = {
   'Trinidad and Tobago': 'https://flagcdn.com/w20/tt.png',
   'Barbados': 'https://flagcdn.com/w20/bb.png',
   'Bahamas': 'https://flagcdn.com/w20/bs.png',
+  'El Salvador': 'https://flagcdn.com/w20/sv.png',
   'New Zealand': 'https://flagcdn.com/w20/nz.png',
   'Fiji': 'https://flagcdn.com/w20/fj.png',
   'Papua New Guinea': 'https://flagcdn.com/w20/pg.png',
@@ -220,7 +225,7 @@ const countryFlagMap: { [key: string]: string } = {
   'Samoa': 'https://flagcdn.com/w20/ws.png',
   'Tonga': 'https://flagcdn.com/w20/to.png',
   'Vanuatu': 'https://flagcdn.com/w20/vu.png',
-  'Solomon Is.': 'https://flagcdn.com/w20/sb.png',
+  'Solomon Islands': 'https://flagcdn.com/w20/sb.png',
   'Kiribati': 'https://flagcdn.com/w20/ki.png',
   'Marshall Islands': 'https://flagcdn.com/w20/mh.png',
   'Palau': 'https://flagcdn.com/w20/pw.png',
@@ -311,7 +316,250 @@ const countryFlagMap: { [key: string]: string } = {
   'Dominica': 'https://flagcdn.com/w20/dm.png',
   'Malawi': 'https://flagcdn.com/w20/mw.png',
   'Mauritania': 'https://flagcdn.com/w20/mr.png',
-  'Democratic Republic of the Congo': 'https://flagcdn.com/w20/cd.png'
+  'Democratic Republic of the Congo': 'https://flagcdn.com/w20/cd.png',
+  'Saint Vincent and the Grenadines': 'https://flagcdn.com/w20/vc.png',
+  'Syria': 'https://flagcdn.com/w20/sy.png'
+};
+
+// Country capital mapping
+const countryCapitalMap: { [key: string]: string } = {
+  'United States of America': 'Washington, D.C.',
+  'United States': 'Washington, D.C.',
+  'USA': 'Washington, D.C.',
+  'US': 'Washington, D.C.',
+  'United Kingdom': 'London',
+  'UK': 'London',
+  'Canada': 'Ottawa',
+  'Australia': 'Canberra',
+  'Germany': 'Berlin',
+  'France': 'Paris',
+  'Italy': 'Rome',
+  'Spain': 'Madrid',
+  'Japan': 'Tokyo',
+  'China': 'Beijing',
+  'India': 'New Delhi',
+  'Brazil': 'Brasília',
+  'Mexico': 'Mexico City',
+  'South Korea': 'Seoul',
+  'Russia': 'Moscow',
+  'Argentina': 'Buenos Aires',
+  'South Africa': 'Pretoria',
+  'Egypt': 'Cairo',
+  'Nigeria': 'Abuja',
+  'Kenya': 'Nairobi',
+  'Turkey': 'Ankara',
+  'Saudi Arabia': 'Riyadh',
+  'Indonesia': 'Jakarta',
+  'Thailand': 'Bangkok',
+  'Vietnam': 'Hanoi',
+  'Philippines': 'Manila',
+  'Malaysia': 'Kuala Lumpur',
+  'Singapore': 'Singapore',
+  'Pakistan': 'Islamabad',
+  'Bangladesh': 'Dhaka',
+  'Iran': 'Tehran',
+  'Iraq': 'Baghdad',
+  'Israel': 'Jerusalem',
+  'UAE': 'Abu Dhabi',
+  'United Arab Emirates': 'Abu Dhabi',
+  'Oman': 'Muscat',
+  'Poland': 'Warsaw',
+  'Netherlands': 'Amsterdam',
+  'Belgium': 'Brussels',
+  'Switzerland': 'Bern',
+  'Sweden': 'Stockholm',
+  'Norway': 'Oslo',
+  'Denmark': 'Copenhagen',
+  'Finland': 'Helsinki',
+  'Austria': 'Vienna',
+  'Greece': 'Athens',
+  'Portugal': 'Lisbon',
+  'Ireland': 'Dublin',
+  'Czech Republic': 'Prague',
+  'Czechia': 'Prague',
+  'Hungary': 'Budapest',
+  'Romania': 'Bucharest',
+  'Bulgaria': 'Sofia',
+  'Croatia': 'Zagreb',
+  'Slovakia': 'Bratislava',
+  'Slovenia': 'Ljubljana',
+  'Estonia': 'Tallinn',
+  'Latvia': 'Riga',
+  'Lithuania': 'Vilnius',
+  'Luxembourg': 'Luxembourg',
+  'Malta': 'Valletta',
+  'Cyprus': 'Nicosia',
+  'Chile': 'Santiago',
+  'Peru': 'Lima',
+  'Colombia': 'Bogotá',
+  'Venezuela': 'Caracas',
+  'Ecuador': 'Quito',
+  'Bolivia': 'La Paz',
+  'Uruguay': 'Montevideo',
+  'Paraguay': 'Asunción',
+  'Costa Rica': 'San José',
+  'Panama': 'Panama City',
+  'Guatemala': 'Guatemala City',
+  'Cuba': 'Havana',
+  'Jamaica': 'Kingston',
+  'Trinidad and Tobago': 'Port of Spain',
+  'Barbados': 'Bridgetown',
+  'Bahamas': 'Nassau',
+  'El Salvador': 'San Salvador',
+  'New Zealand': 'Wellington',
+  'Fiji': 'Suva',
+  'Papua New Guinea': 'Port Moresby',
+  'Sri Lanka': 'Colombo',
+  'Myanmar': 'Naypyidaw',
+  'Cambodia': 'Phnom Penh',
+  'Laos': 'Vientiane',
+  'Mongolia': 'Ulaanbaatar',
+  'Nepal': 'Kathmandu',
+  'Bhutan': 'Thimphu',
+  'Afghanistan': 'Kabul',
+  'Morocco': 'Rabat',
+  'Tunisia': 'Tunis',
+  'Libya': 'Tripoli',
+  'Algeria': 'Algiers',
+  'Sudan': 'Khartoum',
+  'Ethiopia': 'Addis Ababa',
+  'Ghana': 'Accra',
+  'Ivory Coast': 'Yamoussoukro',
+  'Senegal': 'Dakar',
+  'Mali': 'Bamako',
+  'Burkina Faso': 'Ouagadougou',
+  'Niger': 'Niamey',
+  'Chad': 'N\'Djamena',
+  'Cameroon': 'Yaoundé',
+  'Congo': 'Brazzaville',
+  'Dem. Rep. Congo': 'Kinshasa',
+  'Democratic Republic of the Congo': 'Kinshasa',
+  'Uganda': 'Kampala',
+  'Tanzania': 'Dodoma',
+  'Rwanda': 'Kigali',
+  'Burundi': 'Gitega',
+  'Madagascar': 'Antananarivo',
+  'Mozambique': 'Maputo',
+  'Zambia': 'Lusaka',
+  'Zimbabwe': 'Harare',
+  'Botswana': 'Gaborone',
+  'Namibia': 'Windhoek',
+  'Angola': 'Luanda',
+  'Gabon': 'Libreville',
+  'Equatorial Guinea': 'Malabo',
+  'Central African Rep.': 'Bangui',
+  'Central African Republic': 'Bangui',
+  'South Sudan': 'Juba',
+  'Eritrea': 'Asmara',
+  'Djibouti': 'Djibouti',
+  'Somalia': 'Mogadishu',
+  'Liberia': 'Monrovia',
+  'Sierra Leone': 'Freetown',
+  'Guinea': 'Conakry',
+  'Guinea-Bissau': 'Bissau',
+  'Gambia': 'Banjul',
+  'Cape Verde': 'Praia',
+  'Sao Tome and Principe': 'São Tomé',
+  'Comoros': 'Moroni',
+  'Seychelles': 'Victoria',
+  'Mauritius': 'Port Louis',
+  'Maldives': 'Malé',
+  'Samoa': 'Apia',
+  'Tonga': 'Nukuʻalofa',
+  'Vanuatu': 'Port Vila',
+  'Solomon Islands': 'Honiara',
+  'Kiribati': 'Tarawa',
+  'Marshall Islands': 'Majuro',
+  'Palau': 'Ngerulmud',
+  'Nauru': 'Yaren',
+  'Tuvalu': 'Funafuti',
+  'Micronesia': 'Palikir',
+  'eSwatini': 'Mbabane',
+  'Eswatini': 'Mbabane',
+  'Lesotho': 'Maseru',
+  'Benin': 'Porto-Novo',
+  'Togo': 'Lomé',
+  'Guyana': 'Georgetown',
+  'Suriname': 'Paramaribo',
+  'French Guiana': 'Cayenne',
+  'Belize': 'Belmopan',
+  'Honduras': 'Tegucigalpa',
+  'Nicaragua': 'Managua',
+  'Haiti': 'Port-au-Prince',
+  'Dominican Rep.': 'Santo Domingo',
+  'Monaco': 'Monaco',
+  'San Marino': 'San Marino',
+  'Vatican City': 'Vatican City',
+  'Andorra': 'Andorra la Vella',
+  'Liechtenstein': 'Vaduz',
+  'Iceland': 'Reykjavik',
+  'Greenland': 'Nuuk',
+  'Faroe Islands': 'Tórshavn',
+  'Isle of Man': 'Douglas',
+  'Jersey': 'Saint Helier',
+  'Guernsey': 'Saint Peter Port',
+  'Gibraltar': 'Gibraltar',
+  'Bermuda': 'Hamilton',
+  'Cayman Islands': 'George Town',
+  'British Virgin Islands': 'Road Town',
+  'U.S. Virgin Islands': 'Charlotte Amalie',
+  'Turks and Caicos Islands': 'Cockburn Town',
+  'Puerto Rico': 'San Juan',
+  'Aruba': 'Oranjestad',
+  'Curacao': 'Willemstad',
+  'French Polynesia': 'Papeete',
+  'New Caledonia': 'Nouméa',
+  'Martinique': 'Fort-de-France',
+  'Guadeloupe': 'Basse-Terre',
+  'Reunion': 'Saint-Denis',
+  'Mayotte': 'Mamoudzou',
+  'Saint Barthelemy': 'Gustavia',
+  'Saint Martin': 'Marigot',
+  'Saint Pierre and Miquelon': 'Saint-Pierre',
+  'Wallis and Futuna': 'Mata-Utu',
+  'Saint Helena': 'Jamestown',
+  'Montserrat': 'Plymouth',
+  'Anguilla': 'The Valley',
+  'British Indian Ocean Territory': 'Diego Garcia',
+  'South Georgia': 'Grytviken',
+  'Pitcairn Islands': 'Adamstown',
+  'Tokelau': 'Fakaofo',
+  'Cook Islands': 'Avarua',
+  'Niue': 'Alofi',
+  'American Samoa': 'Pago Pago',
+  'Northern Mariana Islands': 'Saipan',
+  'Guam': 'Hagåtña',
+  'Hong Kong': 'Hong Kong',
+  'Macau': 'Macau',
+  'Taiwan': 'Taipei',
+  'Palestine': 'Ramallah',
+  'Western Sahara': 'El Aaiún',
+  'Kosovo': 'Pristina',
+  'North Macedonia': 'Skopje',
+  'Macedonia': 'Skopje',
+  'Serbia': 'Belgrade',
+  'Montenegro': 'Podgorica',
+  'Bosnia and Herzegovina': 'Sarajevo',
+  'Albania': 'Tirana',
+  'Moldova': 'Chișinău',
+  'Belarus': 'Minsk',
+  'Ukraine': 'Kyiv',
+  'Georgia': 'Tbilisi',
+  'Armenia': 'Yerevan',
+  'Azerbaijan': 'Baku',
+  'Kazakhstan': 'Nur-Sultan',
+  'Uzbekistan': 'Tashkent',
+  'Turkmenistan': 'Ashgabat',
+  'Kyrgyzstan': 'Bishkek',
+  'Tajikistan': 'Dushanbe',
+  'Brunei': 'Bandar Seri Begawan',
+  'East Timor': 'Dili',
+  'Timor-Leste': 'Dili',
+  'Dominica': 'Roseau',
+  'Malawi': 'Lilongwe',
+  'Mauritania': 'Nouakchott',
+  'Saint Vincent and the Grenadines': 'Kingstown',
+  'Syria': 'Damascus'
 };
 
   // Normalize country names
@@ -345,7 +593,7 @@ const countryFlagMap: { [key: string]: string } = {
     .domain(values)
     .range(colorSchemes[colorScheme]);
 
-  // Load geographies
+  // Load geographies and process detailed data
   useEffect(() => {
     fetch(geoUrl)
       .then(res => res.json())
@@ -353,22 +601,79 @@ const countryFlagMap: { [key: string]: string } = {
         setGeographies(data.objects.countries.geographies);
       })
       .catch(err => console.error('Error loading geographies:', err));
-  }, []);
+
+    // Process detailed country data if sheetData is available
+    if (sheetData) {
+      const detailed = processCountryDetailedData(sheetData);
+      setDetailedCountryData(detailed);
+    }
+  }, [sheetData]);
 
   const handleGeographyEnter = (geo: any, event: React.MouseEvent) => {
     const countryName = geo.properties.name;
     const countryData = dataMap.get(countryName);
+    const detailedData = detailedCountryData.find(d => normalizeCountryName(d.country) === countryName);
     const flagUrl = countryFlagMap[countryName];
+    const capital = countryCapitalMap[countryName];
     
     if (countryData) {
-      const tooltipText = flagUrl 
-        ? `<img src="${flagUrl}" alt="${countryName}" style="width: 20px; height: 15px; margin-right: 8px; vertical-align: middle;" /> ${countryName}: ${countryData.value.toLocaleString()} companies`
-        : `${countryName}: ${countryData.value.toLocaleString()} companies`;
+      const maxIndustryCount = detailedData && detailedData.topIndustries.length > 0 
+        ? Math.max(...detailedData.topIndustries.map(i => i.count))
+        : 1;
+
+      let tooltipText = `
+        <div style="background-color: white; border: 1px solid #ccc; padding: 12px; border-radius: 6px; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-width: 400px;">
+          <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            ${flagUrl ? `<img src="${flagUrl}" alt="${countryName}" style="width: 20px; height: 15px; margin-right: 8px; vertical-align: middle;" />` : ''}
+            <div style="font-weight: bold; font-size: 1.1em; color: #2c3e50;">${countryName}</div>
+          </div>
+      `;
+
+      if (capital) {
+        tooltipText += `<div style="margin-bottom: 6px; font-size: 0.9em;"><span style="font-weight: bold; color: #34495e;">Capital:</span> ${capital}</div>`;
+      }
+
+      tooltipText += `<div style="margin-bottom: 8px; font-size: 0.9em;"><span style="font-weight: bold; color: #34495e;">Companies:</span> ${countryData.value.toLocaleString()}</div>`;
+
+      if (detailedData && detailedData.topIndustries.length > 0) {
+        tooltipText += `<div style="margin-top: 12px; font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 0.95em;">Sub-Industries:</div>`;
+        detailedData.topIndustries.forEach((industry, index) => {
+          const barWidth = (industry.count / maxIndustryCount) * 120; // Max width 120px
+          
+          tooltipText += `
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+              <div style="width: 200px; font-size: 0.85em; color: #555; line-height: 1.2; max-height: 2.4em; overflow: hidden;">${industry.industry}</div>
+              <div style="width: 120px; background-color: #ecf0f1; height: 14px; border-radius: 3px; margin-left: 8px; border: 1px solid #bdc3c7;">
+                <div style="width: ${barWidth}px; background: linear-gradient(90deg, #3498db, #2980b9); height: 14px; border-radius: 3px;"></div>
+              </div>
+              <div style="margin-left: 8px; font-size: 0.85em; font-weight: bold; color: #2c3e50; min-width: 25px;">${industry.count}</div>
+            </div>
+          `;
+        });
+      }
+
+      if (detailedData && detailedData.averageBizgridScore > 0) {
+        tooltipText += `<div style="margin-top: 10px; font-size: 0.9em; padding-top: 8px; border-top: 1px solid #ecf0f1;"><span style="font-weight: bold; color: #34495e;">Avg Bizgrid Score:</span> <span style="color: #27ae60; font-weight: bold;">${detailedData.averageBizgridScore}/100</span></div>`;
+      }
+      
+      tooltipText += `</div>`; // Close the main tooltip div
       setTooltipContent(tooltipText);
     } else {
-      const tooltipText = flagUrl 
-        ? `<img src="${flagUrl}" alt="${countryName}" style="width: 20px; height: 15px; margin-right: 8px; vertical-align: middle;" /> ${countryName}: No data`
-        : `${countryName}: No data`;
+      let tooltipText = `
+        <div style="background-color: white; border: 1px solid #ccc; padding: 12px; border-radius: 6px; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-width: 320px;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            ${flagUrl ? `<img src="${flagUrl}" alt="${countryName}" style="width: 20px; height: 15px; margin-right: 8px; vertical-align: middle;" />` : ''}
+            <div style="font-weight: bold; font-size: 1.1em; color: #2c3e50;">${countryName}</div>
+          </div>
+      `;
+      
+      if (capital) {
+        tooltipText += `<div style="margin-bottom: 6px; font-size: 0.9em;"><span style="font-weight: bold; color: #34495e;">Capital:</span> ${capital}</div>`;
+      }
+      
+      tooltipText += `<div style="color: #7f8c8d; font-style: italic;">No data available</div>`;
+      tooltipText += `</div>`;
+      
       setTooltipContent(tooltipText);
     }
     
@@ -460,11 +765,6 @@ const countryFlagMap: { [key: string]: string } = {
               position: 'fixed',
               top: mousePosition.y - 40,
               left: mousePosition.x + 10,
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              color: 'white',
-              padding: '8px 12px',
-              borderRadius: '4px',
-              fontSize: '14px',
               pointerEvents: 'none',
               zIndex: 1000,
               transform: 'translate(-50%, 0)',

@@ -334,12 +334,13 @@ const WorldMapPage: React.FC<WorldMapPageProps> = ({ filters = {} }) => {
               data={countryData} 
               title="World Atlas"
               colorScheme="blue"
+              sheetData={filteredData}
             />
           </Box>
           
           {/* Unmapped Countries Table */}
           <Box sx={{ width: { xs: '100%', lg: '40%' }, flexShrink: 0 }}>
-            <UnmappedCountriesTable data={countryData} />
+            <UnmappedCountriesTable data={countryData} sheetData={filteredData} />
           </Box>
         </Box>
       </Paper>
