@@ -1100,7 +1100,7 @@ const CompanyDirectory: React.FC = () => {
           size="small"
           startIcon={<FilterListIcon />}
           onClick={() => setFilterOpen(true)}
-          disabled={currentTab === 3 || currentTab === 5 || currentTab === 6}
+          disabled={currentTab === 5 || currentTab === 6}
         >
           Filters
         </Button>
@@ -1795,8 +1795,8 @@ const CompanyDirectory: React.FC = () => {
       </Paper>
       )}
 
-      {/* Our coverage stats card - Hidden only in Statistics, World Map, and Newsletter tabs */}
-      {currentTab !== 1 && currentTab !== 3 && currentTab !== 5 && (
+      {/* Our coverage stats card - Hidden only in Statistics and Newsletter tabs */}
+      {currentTab !== 1 && currentTab !== 5 && (
         <Box sx={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'background.default', mb: 1 }}>
         <Paper 
           elevation={0} 
