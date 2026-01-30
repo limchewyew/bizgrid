@@ -2,6 +2,7 @@ import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
+import { Analytics } from '@vercel/analytics/react';
 import CompanyDirectory from './components/CompanyDirectory';
 import Footer from './components/Footer/Footer';
 
@@ -136,6 +137,7 @@ function App() {
           <CompanyDirectory />
         </Box>
         <Footer />
+        <Analytics />
       </Box>
     </ThemeProvider>
   );
