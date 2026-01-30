@@ -19,6 +19,7 @@ import EmployeeBarChart from '../EmployeeBarChart';
 import FoundedYearBarChart from '../FoundedYearBarChart';
 import RevenueRangeBarChart from '../RevenueRangeBarChart';
 import BizgridScoreBarChart from '../BizgridScoreBarChart';
+import SectorTable from '../SectorTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface TabPanelProps {
@@ -358,7 +359,7 @@ const WorldMapPage: React.FC<WorldMapPageProps> = ({ filters = {} }) => {
       </Box>
 
       {/* Two More Bar Charts Side by Side - Each 50% width */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, mb: 2 }}>
         <RevenueRangeBarChart 
           data={filteredData} 
           filters={filters}
@@ -368,6 +369,12 @@ const WorldMapPage: React.FC<WorldMapPageProps> = ({ filters = {} }) => {
           filters={filters}
         />
       </Box>
+
+      {/* Sector Table */}
+      <SectorTable 
+        data={filteredData} 
+        filters={filters}
+      />
     </Box>
   );
 };
