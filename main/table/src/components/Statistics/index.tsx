@@ -61,6 +61,9 @@ const Statistics: React.FC = () => {
     region: string[];
     country: string[];
     sector: string[];
+    industry: string[];
+    subIndustry: string[];
+    activity: string[];
     employees: string[];
     foundedYear: string[];
     revenueRange: string[];
@@ -68,6 +71,9 @@ const Statistics: React.FC = () => {
     region: [],
     country: [],
     sector: [],
+    industry: [],
+    subIndustry: [],
+    activity: [],
     employees: [],
     foundedYear: [],
     revenueRange: [],
@@ -137,10 +143,31 @@ const Statistics: React.FC = () => {
       '$10B+'
     ];
 
+    const getUniqueSubIndustries = () => {
+      const subIndustryIndex = headers.findIndex(h => h.toLowerCase().includes('sub-industry'));
+      if (subIndustryIndex === -1) return [];
+      
+      const subIndustries = new Set<string>();
+      data.forEach(row => {
+        const subIndustry = row[subIndustryIndex];
+        if (subIndustry && typeof subIndustry === 'object') {
+          const subValue = (subIndustry.subIndustry ?? subIndustry.subSector ?? '').toString().trim();
+          if (subValue) {
+            subIndustries.add(subValue);
+          }
+        }
+      });
+      
+      return Array.from(subIndustries).sort();
+    };
+
     return {
       region: unique(columnIndex('region')),
       country: unique(columnIndex('country')),
       sector: unique(columnIndex('sector')),
+      industry: unique(columnIndex('industry')),
+      subIndustry: getUniqueSubIndustries(),
+      activity: unique(columnIndex('activity')),
       employees: employeeRangeOptions,
       foundedYear: [], // Will use predefined eras
       revenueRange: revenueRangeOptions,
@@ -159,6 +186,9 @@ const Statistics: React.FC = () => {
       region: [],
       country: [],
       sector: [],
+      industry: [],
+      subIndustry: [],
+      activity: [],
       employees: [],
       foundedYear: [],
       revenueRange: [],

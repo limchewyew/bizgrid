@@ -17,6 +17,9 @@ interface StatisticsFiltersProps {
     region: string[];
     country: string[];
     sector: string[];
+    industry: string[];
+    subIndustry: string[];
+    activity: string[];
     employees: string[];
     foundedYear: string[];
     revenueRange: string[];
@@ -25,6 +28,9 @@ interface StatisticsFiltersProps {
     region: string[];
     country: string[];
     sector: string[];
+    industry: string[];
+    subIndustry: string[];
+    activity: string[];
     employees: string[];
     foundedYear: string[];
     revenueRange: string[];
@@ -162,6 +168,9 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
     { key: 'region', label: 'Region' },
     { key: 'country', label: 'Country' },
     { key: 'sector', label: 'Sector' },
+    { key: 'industry', label: 'Industry' },
+    { key: 'subIndustry', label: 'Sub-Industry' },
+    { key: 'activity', label: 'Activity' },
     { key: 'employees', label: 'Number of Employees' },
     { key: 'foundedYear', label: 'Founded Year' },
     { key: 'revenueRange', label: 'Revenue Range' },
@@ -178,6 +187,18 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
       newValues = currentValues.filter((v: string) => v !== value);
     } else {
       newValues = [...currentValues, value];
+    }
+    
+    // Cascading logic: clear dependent filters when parent changes
+    if (filterType === 'sector') {
+      onFilterChange('industry', []);
+      onFilterChange('subIndustry', []);
+      onFilterChange('activity', []);
+    } else if (filterType === 'industry') {
+      onFilterChange('subIndustry', []);
+      onFilterChange('activity', []);
+    } else if (filterType === 'subIndustry') {
+      onFilterChange('activity', []);
     }
     
     onFilterChange(filterType, newValues);
@@ -211,6 +232,12 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
         return filterOptions.country;
       case 'sector':
         return filterOptions.sector;
+      case 'industry':
+        return getFilteredIndustries();
+      case 'subIndustry':
+        return getFilteredSubIndustries();
+      case 'activity':
+        return getFilteredActivities();
       case 'employees':
         return employeeRangeOptions;
       case 'foundedYear':
@@ -220,6 +247,148 @@ const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({
       default:
         return [];
     }
+  };
+
+  // Cascading filter functions
+  const getFilteredIndustries = () => {
+    if (!filters.sector || filters.sector.length === 0) {
+      return filterOptions.industry;
+    }
+    
+    const sectorIndex = headers.findIndex(header => 
+      header.toLowerCase().includes('sector')
+    );
+    const industryIndex = headers.findIndex(header => 
+      header.toLowerCase() === 'industry'
+    );
+    
+    if (sectorIndex === -1 || industryIndex === -1 || !allData) {
+      return filterOptions.industry;
+    }
+    
+    const filteredIndustries = new Set<string>();
+    
+    allData.forEach(row => {
+      const sector = row[sectorIndex];
+      if (!sector) return;
+      
+      const sectorValue = typeof sector === 'object' 
+        ? (sector.sector ?? sector.industry ?? '').toString().trim()
+        : sector.toString().trim();
+      
+      if (filters.sector.includes(sectorValue)) {
+        const industry = row[industryIndex];
+        if (!industry) return;
+        
+        const industryValue = typeof industry === 'object' 
+          ? (industry.industry ?? industry.sector ?? '').toString().trim()
+          : industry.toString().trim();
+        
+        if (industryValue) {
+          filteredIndustries.add(industryValue);
+        }
+      }
+    });
+    
+    return Array.from(filteredIndustries).sort();
+  };
+
+  const getFilteredSubIndustries = () => {
+    if (!filters.industry || filters.industry.length === 0) {
+      return filterOptions.subIndustry;
+    }
+    
+    const sectorIndex = headers.findIndex(header => 
+      header.toLowerCase().includes('sector')
+    );
+    const industryIndex = headers.findIndex(header => 
+      header.toLowerCase() === 'industry'
+    );
+    const subIndustryIndex = headers.findIndex(header => 
+      header.toLowerCase().includes('sub-industry')
+    );
+    
+    if (sectorIndex === -1 || industryIndex === -1 || subIndustryIndex === -1 || !allData) {
+      return filterOptions.subIndustry;
+    }
+    
+    const filteredSubIndustries = new Set<string>();
+    
+    allData.forEach(row => {
+      const sector = row[sectorIndex];
+      const industry = row[industryIndex];
+      
+      if (!sector || !industry) return;
+      
+      const sectorValue = typeof sector === 'object' 
+        ? (sector.sector ?? sector.industry ?? '').toString().trim()
+        : sector.toString().trim();
+      
+      const industryValue = typeof industry === 'object' 
+        ? (industry.industry ?? industry.sector ?? '').toString().trim()
+        : industry.toString().trim();
+      
+      if (filters.industry.includes(industryValue)) {
+        const subIndustry = row[subIndustryIndex];
+        if (!subIndustry || typeof subIndustry !== 'object') return;
+        
+        const subValue = (subIndustry.subIndustry ?? subIndustry.subSector ?? '').toString().trim();
+        if (subValue) {
+          filteredSubIndustries.add(subValue);
+        }
+      }
+    });
+    
+    return Array.from(filteredSubIndustries).sort();
+  };
+
+  const getFilteredActivities = () => {
+    if (!filters.industry || filters.industry.length === 0) {
+      return filterOptions.activity;
+    }
+    
+    const sectorIndex = headers.findIndex(header => 
+      header.toLowerCase().includes('sector')
+    );
+    const industryIndex = headers.findIndex(header => 
+      header.toLowerCase() === 'industry'
+    );
+    const activityIndex = headers.findIndex(header => 
+      header.toLowerCase() === 'activity'
+    );
+    
+    if (sectorIndex === -1 || industryIndex === -1 || activityIndex === -1 || !allData) {
+      return filterOptions.activity;
+    }
+    
+    const filteredActivities = new Set<string>();
+    
+    allData.forEach(row => {
+      const sector = row[sectorIndex];
+      const industry = row[industryIndex];
+      
+      if (!sector || !industry) return;
+      
+      const sectorValue = typeof sector === 'object' 
+        ? (sector.sector ?? sector.industry ?? '').toString().trim()
+        : sector.toString().trim();
+      
+      const industryValue = typeof industry === 'object' 
+        ? (industry.industry ?? industry.sector ?? '').toString().trim()
+        : industry.toString().trim();
+      
+      if (filters.industry.includes(industryValue)) {
+        const activity = row[activityIndex];
+        if (!activity) return;
+        
+        const activityValue = activity.toString().trim();
+        if (activityValue) {
+          filteredActivities.add(activityValue);
+        }
+      }
+    });
+    
+    return Array.from(filteredActivities).sort();
   };
 
   const getCurrentValues = () => {

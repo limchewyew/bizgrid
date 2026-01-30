@@ -186,24 +186,24 @@ const CompanyDirectory: React.FC = () => {
   const [filters, setFilters] = useState<{
     country: string[];
     region: string[];
-    employees: string[];
-    foundedYear: string[];
-    revenueRange: string[];
     sector: string[];
     industry: string[];
     subIndustry: string[];
     activity: string[];
+    employees: string[];
+    foundedYear: string[];
+    revenueRange: string[];
     bizgridScore: string[];
   }>({
     country: [],
     region: [],
-    employees: [],
-    foundedYear: [],
-    revenueRange: [],
     sector: [],
     industry: [],
     subIndustry: [],
     activity: [],
+    employees: [],
+    foundedYear: [],
+    revenueRange: [],
     bizgridScore: []
   });
 
@@ -307,15 +307,22 @@ const CompanyDirectory: React.FC = () => {
         }
       });
       
-      const options = Array.from(
-        new Set([
-          ...(predefinedOptions || []),
-          ...rows
+      // Get all unique values from the data
+      const dataValues = Array.from(
+        new Set(
+          rows
             .map(r => r[idx])
             .filter(Boolean)
             .map(v => v.toString().trim())
-        ])
-      ).sort((a, b) => a.localeCompare(b));
+        )
+      );
+      
+      // Separate predefined and additional values
+      const predefinedValues = predefinedOptions || [];
+      const additionalValues = dataValues.filter(val => !predefinedValues.includes(val));
+      
+      // Combine: predefined values in order, then additional values sorted alphabetically
+      const options = [...predefinedValues, ...additionalValues.sort((a, b) => a.localeCompare(b))];
       
       return options.map(label => ({ label, count: counts[label] || 0 }));
     };
@@ -339,12 +346,41 @@ const CompanyDirectory: React.FC = () => {
       if (sectorIdx === -1) return [];
       const counts: { [key: string]: number } = {};
       rows.forEach(r => {
+        // Apply bidirectional filtering: filter by selected industries, sub-industries, and activities
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return;
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return;
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return;
+        }
+        
         const val = extractSector(r[sectorIdx]);
         if (val) {
           counts[val] = (counts[val] || 0) + 1;
         }
       });
-      const options = Array.from(new Set(rows.map(r => extractSector(r[sectorIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      const options = Array.from(new Set(rows.map(r => {
+        // Apply bidirectional filtering here too
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return '';
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return '';
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return '';
+        }
+        return extractSector(r[sectorIdx]);
+      }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
       return options.map(label => ({ label, count: counts[label] || 0 }));
     };
     
@@ -352,12 +388,41 @@ const CompanyDirectory: React.FC = () => {
       if (industryIdx === -1) return [];
       const counts: { [key: string]: number } = {};
       rows.forEach(r => {
+        // Apply bidirectional filtering: filter by selected sectors, sub-industries, and activities
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return;
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return;
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return;
+        }
+        
         const val = extractIndustry(r[industryIdx]);
         if (val) {
           counts[val] = (counts[val] || 0) + 1;
         }
       });
-      const options = Array.from(new Set(rows.map(r => extractIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      const options = Array.from(new Set(rows.map(r => {
+        // Apply bidirectional filtering here too
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return '';
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return '';
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return '';
+        }
+        return extractIndustry(r[industryIdx]);
+      }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
       return options.map(label => ({ label, count: counts[label] || 0 }));
     };
     
@@ -365,12 +430,41 @@ const CompanyDirectory: React.FC = () => {
       if (industryIdx === -1) return [];
       const counts: { [key: string]: number } = {};
       rows.forEach(r => {
+        // Apply bidirectional filtering: filter by selected sectors, industries, and activities
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return;
+        }
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return;
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return;
+        }
+        
         const val = extractSubIndustry(r[industryIdx]);
         if (val) {
           counts[val] = (counts[val] || 0) + 1;
         }
       });
-      const options = Array.from(new Set(rows.map(r => extractSubIndustry(r[industryIdx])).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      const options = Array.from(new Set(rows.map(r => {
+        // Apply bidirectional filtering here too
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return '';
+        }
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return '';
+        }
+        if (filters.activity.length > 0) {
+          const activity = r[activityIdx];
+          if (!activity || !filters.activity.includes(activity.toString().trim())) return '';
+        }
+        return extractSubIndustry(r[industryIdx]);
+      }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
       return options.map(label => ({ label, count: counts[label] || 0 }));
     };
     
@@ -378,6 +472,20 @@ const CompanyDirectory: React.FC = () => {
       if (activityIdx === -1) return [];
       const counts: { [key: string]: number } = {};
       rows.forEach(r => {
+        // Apply bidirectional filtering: filter by selected sectors, industries, and sub-industries
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return;
+        }
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return;
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return;
+        }
+        
         const val = r[activityIdx];
         if (val) {
           const key = val.toString().trim();
@@ -385,9 +493,22 @@ const CompanyDirectory: React.FC = () => {
         }
       });
       const options = Array.from(new Set(rows.map(r => {
-          const val = r[activityIdx];
-          return val ? val.toString().trim() : '';
-        }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        // Apply bidirectional filtering here too
+        if (filters.sector.length > 0) {
+          const sector = extractSector(r[sectorIdx]);
+          if (!filters.sector.includes(sector)) return '';
+        }
+        if (filters.industry.length > 0) {
+          const industry = extractIndustry(r[industryIdx]);
+          if (!filters.industry.includes(industry)) return '';
+        }
+        if (filters.subIndustry.length > 0) {
+          const subIndustry = extractSubIndustry(r[industryIdx]);
+          if (!filters.subIndustry.includes(subIndustry)) return '';
+        }
+        const val = r[activityIdx];
+        return val ? val.toString().trim() : '';
+      }).filter(Boolean))).sort((a, b) => a.localeCompare(b));
       return options.map(label => ({ label, count: counts[label] || 0 }));
     };
     
@@ -462,7 +583,7 @@ const CompanyDirectory: React.FC = () => {
       // Keep bizgrid score in predefined ranges
       bizgridScore: getBizgridScoreOptions()
     };
-  }, [rows, filters.country, filters.region, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
+  }, [rows, filters.country, filters.region, filters.sector, filters.industry, filters.subIndustry, countryIdx, regionIdx, employeesIdx, foundedIdx, revenueIdx, sectorIdx, industryIdx, locationIdx, activityIdx, revenueRangeOptions, employeeRangeOptions, foundedYearOptions]);
 
   const filteredByFilters = React.useMemo(() => {
     return rows.filter(row => {
@@ -2402,7 +2523,16 @@ const CompanyDirectory: React.FC = () => {
               multiple
               options={filterOptions.sector}
               value={filters.sector.map(s => ({ label: s, count: 0 }))}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, sector: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              onChange={(_, value) => {
+                const newValues = value.map(v => typeof v === 'string' ? v : v.label);
+                setFilters(prev => ({ 
+                  ...prev, 
+                  sector: newValues,
+                  industry: [], // Clear other filters for bidirectional filtering
+                  subIndustry: [],
+                  activity: []
+                }));
+              }}
               getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
               renderOption={(props, option) => {
                 const label = typeof option === 'string' ? option : option.label;
@@ -2446,7 +2576,16 @@ const CompanyDirectory: React.FC = () => {
               multiple
               options={filterOptions.industry}
               value={filters.industry.map(i => ({ label: i, count: 0 }))}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, industry: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              onChange={(_, value) => {
+                const newValues = value.map(v => typeof v === 'string' ? v : v.label);
+                setFilters(prev => ({ 
+                  ...prev, 
+                  industry: newValues,
+                  sector: [], // Clear other filters for bidirectional filtering
+                  subIndustry: [],
+                  activity: []
+                }));
+              }}
               getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
               renderOption={(props, option) => {
                 const label = typeof option === 'string' ? option : option.label;
@@ -2490,7 +2629,16 @@ const CompanyDirectory: React.FC = () => {
               multiple
               options={filterOptions.subIndustry}
               value={filters.subIndustry.map(si => ({ label: si, count: 0 }))}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, subIndustry: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              onChange={(_, value) => {
+                const newValues = value.map(v => typeof v === 'string' ? v : v.label);
+                setFilters(prev => ({ 
+                  ...prev, 
+                  subIndustry: newValues,
+                  sector: [], // Clear other filters for bidirectional filtering
+                  industry: [],
+                  activity: []
+                }));
+              }}
               getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
               renderOption={(props, option) => {
                 const label = typeof option === 'string' ? option : option.label;
@@ -2534,7 +2682,16 @@ const CompanyDirectory: React.FC = () => {
               multiple
               options={filterOptions.activity}
               value={filters.activity.map(a => ({ label: a, count: 0 }))}
-              onChange={(_, value) => setFilters(prev => ({ ...prev, activity: value.map(v => typeof v === 'string' ? v : v.label) }))}
+              onChange={(_, value) => {
+                const newValues = value.map(v => typeof v === 'string' ? v : v.label);
+                setFilters(prev => ({ 
+                  ...prev, 
+                  activity: newValues,
+                  sector: [], // Clear other filters for bidirectional filtering
+                  industry: [],
+                  subIndustry: []
+                }));
+              }}
               getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
               renderOption={(props, option) => {
                 const label = typeof option === 'string' ? option : option.label;

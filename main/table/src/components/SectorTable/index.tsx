@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Card,
@@ -10,8 +10,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Button,
+  IconButton,
+  TableSortLabel,
+  Tooltip
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import InfoIcon from '@mui/icons-material/Info';
 
 interface SectorTableProps {
   data?: {
@@ -33,7 +40,13 @@ interface SectorTableProps {
 }
 
 const SectorTable: React.FC<SectorTableProps> = ({ data, filters = {} }) => {
-  const sectorData = useMemo(() => {
+  const [currentView, setCurrentView] = useState<'sector' | 'industry' | 'subIndustry' | 'activity'>('sector');
+  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('');
+  const [selectedSubIndustry, setSelectedSubIndustry] = useState<string>('');
+  const [orderBy, setOrderBy] = useState<'name' | 'count'>('count');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const tableData = useMemo(() => {
     if (!data || !data.rows || data.rows.length === 0) {
       return [];
     }
@@ -63,7 +76,8 @@ const SectorTable: React.FC<SectorTableProps> = ({ data, filters = {} }) => {
       }
     }
 
-    if (filters.sector && filters.sector.length > 0) {
+    // Apply sector filter only if not in sector view (to avoid filtering out the selected sector)
+    if (filters.sector && filters.sector.length > 0 && currentView !== 'sector') {
       const sectorIndex = data.headers.findIndex((header: string) => 
         header.toLowerCase().includes('sector')
       );
@@ -155,14 +169,14 @@ const SectorTable: React.FC<SectorTableProps> = ({ data, filters = {} }) => {
     }
 
     if (filters.subIndustry && filters.subIndustry.length > 0) {
-      const subIndustryIndex = data.headers.findIndex((header: string) => 
-        header.toLowerCase().includes('sub-industry')
+      const industryIndex = data.headers.findIndex((header: string) => 
+        header.toLowerCase() === 'industry'
       );
-      if (subIndustryIndex !== -1) {
+      if (industryIndex !== -1) {
         filteredRows = filteredRows.filter(row => {
-          const subIndustry = row[subIndustryIndex];
-          if (!subIndustry || typeof subIndustry !== 'object') return false;
-          const subValue = (subIndustry.subIndustry ?? subIndustry.subSector ?? '').toString().trim();
+          const industry = row[industryIndex];
+          if (!industry || typeof industry !== 'object') return false;
+          const subValue = (industry.subIndustry ?? industry.subSector ?? '').toString().trim();
           if (!subValue) return false;
           return filters.subIndustry!.includes(subValue);
         });
@@ -205,42 +219,248 @@ const SectorTable: React.FC<SectorTableProps> = ({ data, filters = {} }) => {
       }
     }
 
-    // Count companies by sector
-    const sectorCount: { [key: string]: number } = {};
-    
-    filteredRows.forEach(row => {
+    // Apply drill-down filters
+    if (currentView === 'industry' && selectedSector) {
       const sectorIndex = data.headers.findIndex((header: string) => 
         header.toLowerCase().includes('sector')
       );
+      if (sectorIndex !== -1) {
+        filteredRows = filteredRows.filter(row => {
+          const sector = row[sectorIndex];
+          if (!sector) return false;
+          const sectorValue = typeof sector === 'object' 
+            ? (sector.sector ?? sector.industry ?? '').toString().trim()
+            : sector.toString().trim();
+          return sectorValue === selectedSector;
+        });
+      }
+    }
+
+    if (currentView === 'subIndustry' && selectedSector && selectedIndustry) {
+      const sectorIndex = data.headers.findIndex((header: string) => 
+        header.toLowerCase().includes('sector')
+      );
+      const industryIndex = data.headers.findIndex((header: string) => 
+        header.toLowerCase() === 'industry'
+      );
       
-      let sector = 'Unknown';
-      if (sectorIndex !== -1 && row[sectorIndex]) {
-        const sectorValue = row[sectorIndex];
-        sector = typeof sectorValue === 'object' 
-          ? (sectorValue.sector ?? sectorValue.industry ?? 'Unknown').toString().trim()
-          : sectorValue.toString().trim();
+      filteredRows = filteredRows.filter(row => {
+        let sectorMatch = true;
+        let industryMatch = true;
+        
+        if (sectorIndex !== -1) {
+          const sector = row[sectorIndex];
+          if (!sector) return false;
+          const sectorValue = typeof sector === 'object' 
+            ? (sector.sector ?? sector.industry ?? '').toString().trim()
+            : sector.toString().trim();
+          sectorMatch = sectorValue === selectedSector;
+        }
+        
+        if (industryIndex !== -1) {
+          const industry = row[industryIndex];
+          if (!industry) return false;
+          const industryValue = typeof industry === 'object' 
+            ? (industry.industry ?? industry.sector ?? '').toString().trim()
+            : industry.toString().trim();
+          industryMatch = industryValue === selectedIndustry;
+        }
+        
+        return sectorMatch && industryMatch;
+      });
+    }
+
+    if (currentView === 'activity' && selectedSector && selectedIndustry && selectedSubIndustry) {
+      const sectorIndex = data.headers.findIndex((header: string) => 
+        header.toLowerCase().includes('sector')
+      );
+      const industryIndex = data.headers.findIndex((header: string) => 
+        header.toLowerCase() === 'industry'
+      );
+      
+      filteredRows = filteredRows.filter(row => {
+        let sectorMatch = true;
+        let industryMatch = true;
+        let subIndustryMatch = true;
+        
+        if (sectorIndex !== -1) {
+          const sector = row[sectorIndex];
+          if (!sector) return false;
+          const sectorValue = typeof sector === 'object' 
+            ? (sector.sector ?? sector.industry ?? '').toString().trim()
+            : sector.toString().trim();
+          sectorMatch = sectorValue === selectedSector;
+        }
+        
+        if (industryIndex !== -1) {
+          const industry = row[industryIndex];
+          if (!industry) return false;
+          const industryValue = typeof industry === 'object' 
+            ? (industry.industry ?? industry.sector ?? '').toString().trim()
+            : industry.toString().trim();
+          industryMatch = industryValue === selectedIndustry;
+        }
+        
+        // Also check sub-industry match
+        if (industryIndex !== -1) {
+          const industry = row[industryIndex];
+          if (!industry || typeof industry !== 'object') return false;
+          const subValue = (industry.subIndustry ?? industry.subSector ?? '').toString().trim();
+          subIndustryMatch = subValue === selectedSubIndustry;
+        }
+        
+        return sectorMatch && industryMatch && subIndustryMatch;
+      });
+    }
+
+    // Count based on current view
+    const countMap: { [key: string]: number } = {};
+    
+    filteredRows.forEach(row => {
+      let key = 'Unknown';
+      
+      if (currentView === 'sector') {
+        const sectorIndex = data.headers.findIndex((header: string) => 
+          header.toLowerCase().includes('sector')
+        );
+        if (sectorIndex !== -1 && row[sectorIndex]) {
+          const sectorValue = row[sectorIndex];
+          key = typeof sectorValue === 'object' 
+            ? (sectorValue.sector ?? sectorValue.industry ?? 'Unknown').toString().trim()
+            : sectorValue.toString().trim();
+        }
+      } else if (currentView === 'industry') {
+        const industryIndex = data.headers.findIndex((header: string) => 
+          header.toLowerCase() === 'industry'
+        );
+        if (industryIndex !== -1 && row[industryIndex]) {
+          const industryValue = row[industryIndex];
+          key = typeof industryValue === 'object' 
+            ? (industryValue.industry ?? industryValue.sector ?? 'Unknown').toString().trim()
+            : industryValue.toString().trim();
+        }
+      } else if (currentView === 'subIndustry') {
+        const industryIndex = data.headers.findIndex((header: string) => 
+          header.toLowerCase() === 'industry'
+        );
+        if (industryIndex !== -1 && row[industryIndex] && typeof row[industryIndex] === 'object') {
+          const industryValue = row[industryIndex];
+          key = (industryValue.subIndustry ?? industryValue.subSector ?? 'Unknown').toString().trim();
+        }
+      } else if (currentView === 'activity') {
+        const activityIndex = data.headers.findIndex((header: string) => 
+          header.toLowerCase() === 'activity'
+        );
+        if (activityIndex !== -1 && row[activityIndex]) {
+          key = row[activityIndex].toString().trim();
+        }
       }
       
-      sectorCount[sector] = (sectorCount[sector] || 0) + 1;
+      countMap[key] = (countMap[key] || 0) + 1;
     });
 
     // Convert to array and sort by count (descending)
-    return Object.entries(sectorCount)
-      .map(([sector, count]) => ({
-        sector,
+    let sortedData = Object.entries(countMap)
+      .map(([name, count]) => ({
+        name,
         numberOfCompanies: count
-      }))
-      .sort((a, b) => b.numberOfCompanies - a.numberOfCompanies);
+      }));
 
-  }, [data, filters]);
+    // Apply sorting
+    if (orderBy === 'name') {
+      sortedData.sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name);
+        return order === 'asc' ? comparison : -comparison;
+      });
+    } else {
+      sortedData.sort((a, b) => {
+        return order === 'asc' ? a.numberOfCompanies - b.numberOfCompanies : b.numberOfCompanies - a.numberOfCompanies;
+      });
+    }
+
+    return sortedData;
+
+  }, [data, filters, currentView, selectedSector, selectedIndustry, selectedSubIndustry, orderBy, order]);
+
+  const handleSort = (property: 'name' | 'count') => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const handleBack = () => {
+    if (currentView === 'activity') {
+      setCurrentView('subIndustry');
+      setSelectedSubIndustry('');
+    } else if (currentView === 'subIndustry') {
+      setCurrentView('industry');
+      setSelectedIndustry('');
+    } else if (currentView === 'industry') {
+      setCurrentView('sector');
+      setSelectedSector('');
+    }
+  };
+
+  const handleRowClick = (name: string) => {
+    if (currentView === 'sector') {
+      setSelectedSector(name);
+      setCurrentView('industry');
+    } else if (currentView === 'industry') {
+      setSelectedIndustry(name);
+      setCurrentView('subIndustry');
+    } else if (currentView === 'subIndustry') {
+      setSelectedSubIndustry(name);
+      setCurrentView('activity');
+    }
+  };
+
+  const getColumnTitle = () => {
+    switch (currentView) {
+      case 'sector': return 'Sector';
+      case 'industry': return 'Industry';
+      case 'subIndustry': return 'Sub-Industry';
+      case 'activity': return 'Activity';
+      default: return 'Sector';
+    }
+  };
+
+  const getMainTitle = () => {
+    switch (currentView) {
+      case 'sector': return 'Sector Distribution';
+      case 'industry': return 'Industry Distribution';
+      case 'subIndustry': return 'Sub-Industry Distribution';
+      case 'activity': return 'Activity Distribution';
+      default: return 'Sector Distribution';
+    }
+  };
+
+  const getBreakdownPath = () => {
+    const parts = [];
+    if (selectedSector) parts.push(selectedSector);
+    if (selectedIndustry) parts.push(selectedIndustry);
+    if (selectedSubIndustry) parts.push(selectedSubIndustry);
+    return parts.join(' > ');
+  };
+
+  const getTableTitle = () => {
+    switch (currentView) {
+      case 'sector': return 'Sector Distribution';
+      case 'industry': return `Industry Distribution - ${selectedSector}`;
+      case 'subIndustry': return `Sub-Industry Distribution - ${selectedSector} > ${selectedIndustry}`;
+      case 'activity': return `Activity Distribution - ${selectedSector} > ${selectedIndustry} > ${selectedSubIndustry}`;
+      default: return 'Sector Distribution';
+    }
+  };
 
   if (!data) {
     return (
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Sector Distribution
-          </Typography>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Sector Distribution
+            </Typography>
+          </Box>
           <Typography color="text.secondary">
             No data available
           </Typography>
@@ -252,29 +472,109 @@ const SectorTable: React.FC<SectorTableProps> = ({ data, filters = {} }) => {
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Sector Distribution
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ flex: 1, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ mb: 0.5 }}>
+              {getMainTitle()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+              {getBreakdownPath()}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Click on the items to drill down on them" arrow>
+              <IconButton 
+                size="small" 
+                sx={{ 
+                  color: 'text.secondary',
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  }
+                }}
+              >
+                <InfoIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {currentView !== 'sector' && (
+              <IconButton onClick={handleBack} sx={{ ml: 2 }}>
+                <ArrowBackIcon />
+              </IconButton>
+            )}
+          </Box>
+        </Box>
         <TableContainer component={Paper} variant="outlined">
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 'bold' }}>Sector</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>
-                  Number of Companies
+                <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span>{getColumnTitle()}</span>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleSort('name')}
+                      sx={{
+                        color: 'inherit',
+                        padding: 0.5,
+                        ml: 1,
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        }
+                      }}
+                    >
+                      <FilterListIcon 
+                        fontSize="small"
+                        sx={{
+                          transform: orderBy === 'name' && order === 'desc' ? 'rotate(180deg)' : 'none',
+                          transition: 'transform 0.2s'
+                        }}
+                      />
+                    </IconButton>
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span>Companies</span>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleSort('count')}
+                      sx={{
+                        color: 'inherit',
+                        padding: 0.5,
+                        ml: 1,
+                        '&:hover': {
+                          backgroundColor: 'action.hover',
+                        }
+                      }}
+                    >
+                      <FilterListIcon 
+                        fontSize="small"
+                        sx={{
+                          transform: orderBy === 'count' && order === 'desc' ? 'rotate(180deg)' : 'none',
+                          transition: 'transform 0.2s'
+                        }}
+                      />
+                    </IconButton>
+                  </Box>
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {sectorData.map((item, index) => (
-                <TableRow key={item.sector} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
-                  <TableCell>{item.sector}</TableCell>
-                  <TableCell sx={{ textAlign: 'right' }}>
+              {tableData.map((item: { name: string; numberOfCompanies: number }, index: number) => (
+                <TableRow 
+                  key={item.name} 
+                  sx={{ 
+                    '&:nth-of-type(odd)': { backgroundColor: 'action.hover' },
+                    cursor: currentView !== 'activity' ? 'pointer' : 'default'
+                  }}
+                  onClick={() => currentView !== 'activity' && handleRowClick(item.name)}
+                >
+                  <TableCell sx={{ textAlign: 'center' }}>{item.name}</TableCell>
+                  <TableCell sx={{ textAlign: 'center' }}>
                     {item.numberOfCompanies.toLocaleString()}
                   </TableCell>
                 </TableRow>
               ))}
-              {sectorData.length === 0 && (
+              {tableData.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={2} align="center" sx={{ color: 'text.secondary' }}>
                     No data available

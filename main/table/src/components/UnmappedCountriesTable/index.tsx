@@ -16,6 +16,7 @@ import {
   IconButton
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { processCountryDetailedData, CountryDetailedData } from '../../utils/countryDataProcessor';
 
 // Country code to flag image URL mapping (same as in ChoroplethMap)
@@ -527,6 +528,8 @@ const UnmappedCountriesTable: React.FC<UnmappedCountriesTableProps> = ({ data, s
   const [tooltipContent, setTooltipContent] = useState<string>('');
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [detailedCountryData, setDetailedCountryData] = useState<CountryDetailedData[]>([]);
+  const [orderBy, setOrderBy] = useState<'country' | 'count'>('count');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   
   // Load world atlas countries to compare against dataset and process detailed data
   useEffect(() => {
@@ -553,23 +556,52 @@ const UnmappedCountriesTable: React.FC<UnmappedCountriesTableProps> = ({ data, s
     // If world atlas countries haven't loaded yet, show all data as unmapped temporarily
     if (worldAtlasCountries.size === 0) {
       console.log('World atlas countries not loaded yet, showing all data as unmapped temporarily');
-      return data.sort((a, b) => b.value - a.value);
+      let sortedData = [...data];
+      if (orderBy === 'country') {
+        sortedData.sort((a, b) => {
+          const comparison = a.country.localeCompare(b.country);
+          return order === 'asc' ? comparison : -comparison;
+        });
+      } else {
+        sortedData.sort((a, b) => {
+          return order === 'asc' ? a.value - b.value : b.value - a.value;
+        });
+      }
+      return sortedData;
     }
     
-    const filtered = data.filter(item => {
+    let filtered = data.filter(item => {
       const countryName = item.country;
       const isUnmapped = !worldAtlasCountries.has(countryName) || 
                         countryName === 'Hong Kong' || 
                         countryName === 'Macau';
       return isUnmapped;
-    }).sort((a, b) => b.value - a.value);
+    });
+
+    // Apply sorting
+    if (orderBy === 'country') {
+      filtered.sort((a, b) => {
+        const comparison = a.country.localeCompare(b.country);
+        return order === 'asc' ? comparison : -comparison;
+      });
+    } else {
+      filtered.sort((a, b) => {
+        return order === 'asc' ? a.value - b.value : b.value - a.value;
+      });
+    }
     
     console.log('World atlas countries loaded:', worldAtlasCountries.size);
     console.log('Total countries in data:', data.length);
     console.log('Unmapped countries found:', filtered.length);
     
     return filtered;
-  }, [data, worldAtlasCountries]);
+  }, [data, worldAtlasCountries, orderBy, order]);
+
+  const handleSort = (property: 'country' | 'count') => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
 
   // Find max value for color scaling
   const maxValue = unmappedData.length > 0 ? unmappedData[0].value : 1;
@@ -656,9 +688,61 @@ const UnmappedCountriesTable: React.FC<UnmappedCountriesTableProps> = ({ data, s
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', width: '150px' }}>Country/Region</TableCell>
-              <TableCell sx={{ width: '100px', fontWeight: 'bold', textAlign: 'center' }}>Distribution</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Companies</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', width: '150px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span>Country/Region</span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleSort('country')}
+                    sx={{
+                      color: 'inherit',
+                      padding: 0.5,
+                      ml: 1,
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      }
+                    }}
+                  >
+                    <FilterListIcon 
+                      fontSize="small"
+                      sx={{
+                        transform: orderBy === 'country' && order === 'desc' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.2s'
+                      }}
+                    />
+                  </IconButton>
+                </Box>
+              </TableCell>
+              <TableCell sx={{ width: '100px', fontWeight: 'bold', textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span>Distribution</span>
+                </Box>
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span>Companies</span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleSort('count')}
+                    sx={{
+                      color: 'inherit',
+                      padding: 0.5,
+                      ml: 1,
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      }
+                    }}
+                  >
+                    <FilterListIcon 
+                      fontSize="small"
+                      sx={{
+                        transform: orderBy === 'count' && order === 'desc' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.2s'
+                      }}
+                    />
+                  </IconButton>
+                </Box>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -686,7 +770,7 @@ const UnmappedCountriesTable: React.FC<UnmappedCountriesTableProps> = ({ data, s
                       }}
                     />
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                  <TableCell align="center" sx={{ fontWeight: 'bold' }}>
                     {item.value.toLocaleString()}
                   </TableCell>
                 </TableRow>
