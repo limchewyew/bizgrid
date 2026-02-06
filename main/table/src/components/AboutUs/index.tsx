@@ -15,6 +15,9 @@ import {
   Palette,
   Analytics,
   Business,
+  Dataset,
+  AccountTree,
+  TrendingUp,
 } from '@mui/icons-material';
 
 const theme = createTheme({
@@ -369,6 +372,185 @@ const AboutUs: React.FC = () => {
                   fontWeight: 400
                 }}>
                   A strategic edge. Use our comprehensive database to analyze competitor landscapes, track industry trends, and gain insights for your strategy.
+                </Typography>
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 4,
+                    backgroundColor: '#2e7d32',
+                    borderRadius: 2,
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Why Bizgrid Section */}
+        <Typography
+          variant="h6"
+          component="h2"
+          gutterBottom
+          sx={{
+            textAlign: 'center',
+            fontWeight: 600,
+            mb: 4,
+            mt: 6,
+            color: '#001f3f',
+            fontSize: { xs: '1.5rem', md: '1.75rem' },
+            lineHeight: 1.3
+          }}
+        >
+          Why Bizgrid?
+        </Typography>
+
+        <Grid container spacing={3}>
+          {/* Curated Data Card */}
+          <Grid item xs={12} md={4}>
+            <Card
+              elevation={2}
+              sx={{
+                height: '100%',
+                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+                borderRadius: 3,
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Dataset
+                    sx={{
+                      fontSize: 32,
+                      color: '#1976d2',
+                      mr: 2,
+                    }}
+                  />
+                  <Typography variant="body1" component="h3" sx={{ 
+                    fontSize: '1rem',
+                    lineHeight: 1.7,
+                    color: '#333',
+                    fontWeight: 700
+                  }}>
+                    Curated, High-Fidelity Data
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ 
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  color: '#555',
+                  mb: 3,
+                  fontWeight: 400
+                }}>
+                  Tired of duplicates and outdated records? Unlike mass-scraped data, we manually verify every entry to deliver clean, accurate company information you can trust.
+                </Typography>
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 4,
+                    backgroundColor: '#1976d2',
+                    borderRadius: 2,
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Bridging Gap Card */}
+          <Grid item xs={12} md={4}>
+            <Card
+              elevation={2}
+              sx={{
+                height: '100%',
+                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+                borderRadius: 3,
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <AccountTree
+                    sx={{
+                      fontSize: 32,
+                      color: '#dc004e',
+                      mr: 2,
+                    }}
+                  />
+                  <Typography variant="body1" component="h3" sx={{ 
+                    fontSize: '1rem',
+                    lineHeight: 1.7,
+                    color: '#333',
+                    fontWeight: 700
+                  }}>
+                    Brands & Subsidiaries
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ 
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  color: '#555',
+                  mb: 3,
+                  fontWeight: 400
+                }}>
+                  Our database includes global parent companies, their brands, and unique subsidiaries. We provide a comprehensive view of the business landscape.
+                </Typography>
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 4,
+                    backgroundColor: '#dc004e',
+                    borderRadius: 2,
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Advanced Analytics Card */}
+          <Grid item xs={12} md={4}>
+            <Card
+              elevation={2}
+              sx={{
+                height: '100%',
+                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+                borderRadius: 3,
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <TrendingUp
+                    sx={{
+                      fontSize: 32,
+                      color: '#2e7d32',
+                      mr: 2,
+                    }}
+                  />
+                  <Typography variant="body1" component="h3" sx={{ 
+                    fontSize: '1rem',
+                    lineHeight: 1.7,
+                    color: '#333',
+                    fontWeight: 700
+                  }}>
+                    Advanced Analytics
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ 
+                  fontSize: '0.875rem',
+                  lineHeight: 1.6,
+                  color: '#555',
+                  mb: 3,
+                  fontWeight: 400
+                }}>
+                  Make smarter decisions with the BizGrid Score, our real-time proprietary metric. Use built-in tools for competitor analysis, comparisons, and precision filtering.
                 </Typography>
                 <Box
                   sx={{
