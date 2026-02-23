@@ -879,7 +879,7 @@ const CompanyDirectory: React.FC = () => {
 
   // Get border color for selected competitor card
   const getCompetitorBorderColor = () => {
-    if (!selectedCompetitor || !parseCompanyForCompetitors(clickedRow || hoveredRow)) return '#2196f3';
+    if (!selectedCompetitor || !parseCompanyForCompetitors(clickedRow || hoveredRow)) return '#001f3f';
     
     const originalCompany = parseCompanyForCompetitors(clickedRow || hoveredRow);
     const isSameNation = selectedCompetitor.country === originalCompany?.country && selectedCompetitor.region === originalCompany?.region;
@@ -1195,7 +1195,7 @@ const CompanyDirectory: React.FC = () => {
             [theme.breakpoints.down('sm')]: {
               fontSize: '2rem'
             },
-            background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+            background: 'linear-gradient(135deg, #001f3f 0%, #003366 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -2462,13 +2462,13 @@ const CompanyDirectory: React.FC = () => {
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '& fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                       '&:hover fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                     },
                   }}
@@ -2506,13 +2506,13 @@ const CompanyDirectory: React.FC = () => {
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       '& fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                       '&:hover fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#2196f3',
+                        borderColor: '#001f3f',
                       },
                     },
                   }}
